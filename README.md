@@ -6,6 +6,31 @@ Built with a production architecture, AgentOps combines real-time Linux telemetr
 
 ---
 
+## 📸 Platform Screenshots
+
+### 1. Infrastructure Dashboard
+*Real-time server fleet monitoring, instant health status badges, and live telemetry cards.*
+![Infrastructure Dashboard](docs/screenshots/03-dashboard.png)
+
+### 2. Deep-Dive Server Telemetry & Performance Charts
+*Interactive time-series performance graphs (CPU, RAM, Disk, Network) with top process tables, systemd services, and live journalctl log inspection.*
+![Server Details](docs/screenshots/04-server-details.png)
+
+### 3. AI Troubleshooting Assistant
+*Autonomous LLM troubleshooting agent using 10 strictly read-only diagnostic tools to inspect processes, logs, and system metrics without hallucination.*
+![AI Assistant](docs/screenshots/06-ai-assistant.png)
+
+### 4. Alert Rules & Incident Management
+*Dynamic threshold rules with automatic resolution, cooldown hysteresis, and real-time WebSocket alerts.*
+![Alerts Management](docs/screenshots/05-alerts-manager.png)
+
+### 5. Landing & Authentication
+| Modern Dark Landing Page | High-Contrast Clerk Authentication |
+| :---: | :---: |
+| ![Landing Page](docs/screenshots/01-landing-page.png) | ![Auth Page](docs/screenshots/02-auth-page.png) |
+
+---
+
 ## Key Features
 
 - **Multi-Tenant Server Fleet Management**: Connect, monitor, and organize multiple remote VPS nodes from a single interface.
