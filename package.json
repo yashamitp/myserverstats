@@ -1,0 +1,22 @@
+{
+  "name": "agentops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AgentOps - AI-Powered Multi-Server Monitoring and Troubleshooting Platform",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "test:server": "npm test --prefix server",
+    "build:client": "npm run build --prefix client"
+  },
+  "keywords": [
+    "server-monitoring",
+    "devops",
+    "ssh",
+    "linux",
+    "ai-troubleshooting"
+  ],
+  "author": "AgentOps Team",
+  "license": "Apache-2.0"
+}

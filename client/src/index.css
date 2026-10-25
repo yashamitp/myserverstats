@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-900 text-slate-100 font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0B0F19;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1E293B;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+  }
+}
+
+.terminal-scroll {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* High-contrast Clerk Dark Theme Fixes */
+.cl-card {
+  background-color: #0b0f19 !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+.cl-headerTitle {
+  color: #f8fafc !important;
+  font-weight: 700 !important;
+}
+
+.cl-headerSubtitle {
+  color: #94a3b8 !important;
+}
+
+.cl-formFieldLabel {
+  color: #e2e8f0 !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+}
+
+.cl-formFieldInput {
+  background-color: #070a13 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.cl-formFieldInput:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 1px #6366f1 !important;
+}
+
+.cl-socialButtonsBlockButton {
+  background-color: #0d1322 !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+.cl-socialButtonsBlockButton:hover {
+  background-color: #172033 !important;
+  border-color: #475569 !important;
+}
+
+.cl-socialButtonsBlockButtonText {
+  color: #f1f5f9 !important;
+  font-weight: 500 !important;
+}
+
+.cl-dividerText {
+  color: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+.cl-dividerLine {
+  background-color: #334155 !important;
+}
+
+.cl-footerActionText {
+  color: #94a3b8 !important;
+}
+
+.cl-footerActionLink {
+  color: #818cf8 !important;
+  font-weight: 600 !important;
+}
+
+.cl-footerActionLink:hover {
+  color: #a5b4fc !important;
+}
+
+.cl-identityPreviewText {
+  color: #f8fafc !important;
+}
+
+.cl-identityPreviewEditButton {
+  color: #818cf8 !important;
+}
+
+.cl-formButtonPrimary {
+  background-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.cl-formButtonPrimary:hover {
+  background-color: #4f46e5 !important;
+}
+
+.cl-footer {
+  background: transparent !important;
+  border-top: 1px solid #1e293b !important;
+}
