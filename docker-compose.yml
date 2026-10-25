@@ -5,35 +5,42 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-${CLERK_PUBLISHABLE_KEY:-}}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-}
     container_name: agentops-app
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      # In production, bind strictly to localhost (127.0.0.1) so Nginx reverse proxy handles public access
+      - "127.0.0.1:5000:5000"
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/agentops}
+      - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - ALLOW_PRIVATE_NETWORKS=${ALLOW_PRIVATE_NETWORKS:-false}
       - MONITORING_INTERVAL_SEC=${MONITORING_INTERVAL_SEC:-10}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5000}
-      # Optional AI Provider Configuration
-      - AI_PROVIDER=${AI_PROVIDER:-}
+      - MAX_CONCURRENT_CHECKS=${MAX_CONCURRENT_CHECKS:-10}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-${CLERK_PUBLISHABLE_KEY:-}}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY:-${VITE_CLERK_PUBLISHABLE_KEY:-}}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
+      # AI Provider Configuration
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
       - AI_API_KEY=${AI_API_KEY:-}
-      - AI_MODEL=${AI_MODEL:-}
-    depends_on:
-      mongodb:
-        condition: service_healthy
+      - AI_MODEL=${AI_MODEL:-gemini-2.5-flash}
     networks:
       - agentops-network
 
-  # Internal persistent database (not exposed to host network)
+  # Optional local MongoDB container (activated only when explicitly using --profile local-mongo)
   mongodb:
     image: mongo:7.0
     container_name: agentops-mongodb
     restart: unless-stopped
-    # Port 27017 is NOT mapped to the host to keep database access internal to Docker network
+    profiles:
+      - local-mongo
     volumes:
       - mongo-data:/data/db
     healthcheck:

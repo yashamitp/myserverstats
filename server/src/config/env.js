@@ -86,7 +86,7 @@ const env = {
   
   // Clerk Integration (Optional)
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || '',
-  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || '',
+  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY || '',
 
   // AI Integration (Optional)
   AI_PROVIDER: process.env.AI_PROVIDER || '',
