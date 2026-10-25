@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth as useClerkAuth, useUser as useClerkUser } from '@clerk/clerk-react';
-import { api } from '../services/api';
+import { api, setTokenGetter } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -19,6 +19,19 @@ export function AuthProvider({ children }) {
     clerkAuth = useClerkAuth();
     clerkUser = useClerkUser();
   } catch (_) {}
+
+  // Automatically supply fresh tokens on every request to prevent 60-second Clerk token expiration
+  useEffect(() => {
+    if (clerkAuth && typeof clerkAuth.getToken === 'function') {
+      setTokenGetter(async (options) => {
+        try {
+          return await clerkAuth.getToken(options);
+        } catch (_) {
+          return null;
+        }
+      });
+    }
+  }, [clerkAuth]);
 
   // Sync Clerk authentication state into AgentOps session
   useEffect(() => {

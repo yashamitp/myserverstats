@@ -43,6 +43,8 @@ const createServerSchema = z.object({
 
 const updateServerSchema = z.object({
   name: z.string().min(2).max(100).optional(),
+  hostname: z.string().min(1).max(255).optional(),
+  port: z.number().int().min(1).max(65535).optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   monitoringInterval: z.number().int().min(5).max(300).optional(),
   isMonitoringEnabled: z.boolean().optional(),

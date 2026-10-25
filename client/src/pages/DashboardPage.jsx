@@ -6,6 +6,8 @@ import ServerCard from '../components/ServerCard';
 import MetricCard from '../components/MetricCard';
 import EmptyState from '../components/EmptyState';
 import SkeletonLoader from '../components/SkeletonLoader';
+import EditServerModal from '../components/EditServerModal';
+import DeleteServerModal from '../components/DeleteServerModal';
 import {
   Server,
   Activity,
@@ -28,6 +30,20 @@ export default function DashboardPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [refreshingMap, setRefreshingMap] = useState({});
+  const [editingServer, setEditingServer] = useState(null);
+  const [deletingServer, setDeletingServer] = useState(null);
+
+  const handleServerUpdated = (updated) => {
+    setServers((prev) => prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s)));
+    fetchDashboardData();
+  };
+
+  const handleServerDeleted = (deletedId) => {
+    setServers((prev) => prev.filter((s) => s._id !== deletedId));
+    if (setServerCount) {
+      setServerCount((prev) => Math.max(0, prev - 1));
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -258,11 +274,29 @@ export default function DashboardPage() {
               key={server._id}
               server={server}
               onRefresh={handleRefreshServer}
+              onEdit={(s) => setEditingServer(s)}
+              onDelete={(s) => setDeletingServer(s)}
               isRefreshing={Boolean(refreshingMap[server._id])}
             />
           ))}
         </div>
       )}
+
+      {/* Edit VM Credentials Modal */}
+      <EditServerModal
+        server={editingServer}
+        isOpen={Boolean(editingServer)}
+        onClose={() => setEditingServer(null)}
+        onUpdated={handleServerUpdated}
+      />
+
+      {/* Delete Server Modal */}
+      <DeleteServerModal
+        server={deletingServer}
+        isOpen={Boolean(deletingServer)}
+        onClose={() => setDeletingServer(null)}
+        onDeleted={handleServerDeleted}
+      />
     </div>
   );
 }

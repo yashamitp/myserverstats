@@ -9,11 +9,13 @@ import {
   ArrowRight,
   RefreshCw,
   MoreVertical,
-  Activity
+  Activity,
+  Edit2,
+  Trash2
 } from 'lucide-react';
 import { formatBytes, formatDuration, formatTimeAgo } from '../utils/formatters';
 
-export default function ServerCard({ server, onRefresh, isRefreshing = false }) {
+export default function ServerCard({ server, onRefresh, onEdit, onDelete, isRefreshing = false }) {
   const metrics = server.lastMetrics;
   const cpuPercent = metrics?.cpu?.usagePercent ?? null;
   const memPercent = metrics?.memory?.usagePercent ?? null;
@@ -49,15 +51,35 @@ export default function ServerCard({ server, onRefresh, isRefreshing = false }) 
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onRefresh && onRefresh(server._id)}
-            disabled={isRefreshing}
-            title="Refresh Metrics Now"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-750 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-400' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onRefresh && onRefresh(server._id)}
+              disabled={isRefreshing}
+              title="Refresh Metrics Now"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-dark-750 transition-colors"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-400' : ''}`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onEdit && onEdit(server)}
+              title="Edit VM Credentials"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-brand-300 hover:bg-dark-750 transition-colors"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onDelete && onDelete(server)}
+              title="Delete Server"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-dark-750 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Live Gauges */}

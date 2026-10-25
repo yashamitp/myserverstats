@@ -5,6 +5,7 @@ const AlertRule = require('../models/AlertRule');
 const AIInvestigation = require('../models/AIInvestigation');
 const AuditEvent = require('../models/AuditEvent');
 const { encrypt } = require('../security/crypto');
+const { validateDestination } = require('../security/networkValidator');
 const { testSshConnection } = require('../services/sshService');
 const monitoringWorker = require('../workers/monitoringWorker');
 const { success, error } = require('../utils/response');
@@ -112,6 +113,8 @@ exports.updateServer = async (req, res, next) => {
     const server = req.server;
     const {
       name,
+      hostname,
+      port,
       tags,
       monitoringInterval,
       isMonitoringEnabled,
@@ -123,6 +126,14 @@ exports.updateServer = async (req, res, next) => {
     } = req.body;
 
     if (name !== undefined) server.name = name;
+    if (hostname !== undefined) {
+      const netCheck = await validateDestination(hostname, port || server.port || 22);
+      if (!netCheck.valid) {
+        return error(res, `Invalid host destination: ${netCheck.error}`, 400);
+      }
+      server.hostname = hostname;
+    }
+    if (port !== undefined) server.port = port;
     if (tags !== undefined) server.tags = tags;
     if (monitoringInterval !== undefined) server.monitoringInterval = monitoringInterval;
     if (isMonitoringEnabled !== undefined) server.isMonitoringEnabled = isMonitoringEnabled;

@@ -20,41 +20,43 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-dark-950 text-slate-100 flex flex-col selection:bg-brand-500 selection:text-white">
       {/* Top Navbar */}
-      <header className="h-18 px-6 lg:px-12 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-dark-950/80 backdrop-blur sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-cyan flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <Terminal className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">
-            Agent<span className="text-brand-400">Ops</span>
-          </span>
-        </div>
+      <header className="w-full border-b border-slate-800/80 bg-dark-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 h-20 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3.5 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-cyan flex items-center justify-center shadow-lg shadow-brand-500/25 ring-1 ring-white/10 group-hover:shadow-brand-500/40 transition-all duration-300">
+              <Terminal className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-white flex items-center">
+              Agent<span className="text-brand-400">Ops</span>
+            </span>
+          </Link>
 
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <Link
-              to="/dashboard"
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-600/20 transition-all flex items-center gap-1.5"
-            >
-              <span>Go to Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          ) : (
-            <>
+          <div className="flex items-center gap-4 sm:gap-6">
+            {isAuthenticated ? (
               <Link
-                to="/auth"
-                className="text-xs font-semibold text-slate-300 hover:text-white transition-colors"
+                to="/dashboard"
+                className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-600/25 hover:shadow-brand-500/35 transition-all duration-200 flex items-center gap-2"
               >
-                Sign In
+                <span>Go to Dashboard</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                to="/auth?mode=register"
-                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-600/20 transition-all"
-              >
-                Get Started
-              </Link>
-            </>
-          )}
+            ) : (
+              <>
+                <Link
+                  to="/auth"
+                  className="text-sm font-medium text-slate-300 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-slate-800/40"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/auth?mode=register"
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-600/25 hover:shadow-brand-500/35 transition-all duration-200 active:scale-95"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

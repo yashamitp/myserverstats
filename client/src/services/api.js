@@ -1,7 +1,25 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '') + '/api/v1';
 
+let tokenGetter = null;
+
+export function setTokenGetter(getter) {
+  tokenGetter = getter;
+}
+
 async function request(endpoint, options = {}) {
-  const token = localStorage.getItem('agentops_token');
+  let token = localStorage.getItem('agentops_token');
+
+  // Obtain fresh token dynamically if a token getter (such as Clerk) is registered
+  if (typeof tokenGetter === 'function') {
+    try {
+      const freshToken = await tokenGetter();
+      if (freshToken) {
+        token = freshToken;
+        localStorage.setItem('agentops_token', freshToken);
+      }
+    } catch (_) {}
+  }
+
   const userStr = localStorage.getItem('agentops_user');
   let userEmail = '';
   let userName = '';
@@ -13,18 +31,33 @@ async function request(endpoint, options = {}) {
     } catch (_) {}
   }
 
-  const headers = {
+  const getHeaders = (authToken) => ({
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
     ...(userEmail ? { 'X-Clerk-User-Email': userEmail } : {}),
     ...(userName ? { 'X-Clerk-User-Name': userName } : {}),
     ...(options.headers || {})
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers
   });
+
+  let response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: getHeaders(token)
+  });
+
+  // If unauthorized and dynamic getter is available, force a cache bypass and retry once
+  if (response.status === 401 && typeof tokenGetter === 'function') {
+    try {
+      const forcedToken = await tokenGetter({ skipCache: true });
+      if (forcedToken && forcedToken !== token) {
+        token = forcedToken;
+        localStorage.setItem('agentops_token', forcedToken);
+        response = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers: getHeaders(forcedToken)
+        });
+      }
+    } catch (_) {}
+  }
 
   const data = await response.json().catch(() => null);
 

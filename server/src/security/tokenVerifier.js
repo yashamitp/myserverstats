@@ -44,7 +44,9 @@ async function verifyAuthToken(token, options = {}) {
 
   // 1. First try verifying as local JWT signed by JWT_SECRET
   try {
-    const decoded = jwt.verify(token, options.jwtSecret || env.JWT_SECRET);
+    const decoded = jwt.verify(token, options.jwtSecret || env.JWT_SECRET, {
+      clockTolerance: 60
+    });
     if (!decoded || !decoded.id) {
       throw new Error('Malformed token: missing user id claim');
     }
@@ -119,7 +121,8 @@ async function verifyAuthToken(token, options = {}) {
       });
 
       const verified = jwt.verify(token, signingKey, {
-        algorithms: ['RS256']
+        algorithms: ['RS256'],
+        clockTolerance: 60
       });
 
       if (!verified || !verified.sub) {

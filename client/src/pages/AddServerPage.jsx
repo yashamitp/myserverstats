@@ -67,10 +67,13 @@ export default function AddServerPage() {
 
       setTestResult(res.data);
     } catch (err) {
-      setErrorMsg(err.message || 'Connection test failed');
+      const msg = err.status === 401
+        ? 'Session expired. Please sign in again or refresh the page.'
+        : (err.message || 'Connection test failed');
+      setErrorMsg(msg);
       setTestResult({
         success: false,
-        error: err.message
+        error: msg
       });
     } finally {
       setIsTesting(false);
@@ -111,7 +114,10 @@ export default function AddServerPage() {
       const newServerId = res.data._id;
       navigate(`/servers/${newServerId}`);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to create server');
+      const msg = err.status === 401
+        ? 'Session expired. Please sign in again or refresh the page.'
+        : (err.message || 'Failed to create server');
+      setErrorMsg(msg);
       setIsSubmitting(false);
     }
   };
