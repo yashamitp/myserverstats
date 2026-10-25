@@ -1,37 +1,13 @@
-const jwt = require('jsonwebtoken');
-const env = require('../config/env');
 const { error } = require('../utils/response');
 const User = require('../models/User');
 const Server = require('../models/Server');
 const logger = require('../config/logger');
-
-// Cache JWKS client if Clerk is configured
-let jwksClient = null;
-if (env.CLERK_PUBLISHABLE_KEY) {
-  try {
-    const jwksRsa = require('jwks-rsa');
-    let domain = '';
-    // Clerk publishable keys are: pk_test_<base64(domain$)> or pk_live_<base64(domain$)>
-    const parts = env.CLERK_PUBLISHABLE_KEY.split('_');
-    if (parts.length >= 3) {
-      const b64 = parts.slice(2).join('_');
-      domain = Buffer.from(b64, 'base64').toString('utf8').replace(/\$$/, '');
-    }
-    if (domain) {
-      jwksClient = jwksRsa({
-        jwksUri: `https://${domain}/.well-known/jwks.json`,
-        cache: true,
-        rateLimit: true
-      });
-      logger.info(`Initialized Clerk JWKS client for domain: ${domain}`);
-    }
-  } catch (e) {
-    logger.warn('Could not initialize JWKS client for Clerk', { error: e.message });
-  }
-}
+const { verifyAuthToken } = require('../security/tokenVerifier');
 
 /**
  * Authentication Middleware
+ * Validates cryptographic signatures, claims, and tenant scopes.
+ * Never decodes or links accounts based on unverified client headers.
  */
 async function authenticate(req, res, next) {
   try {
@@ -45,73 +21,75 @@ async function authenticate(req, res, next) {
       return error(res, 'Authentication token missing.', 401);
     }
 
-    // 1. Try local JWT verification
+    let verified;
     try {
-      const decoded = jwt.verify(token, env.JWT_SECRET);
+      verified = await verifyAuthToken(token);
+    } catch (verifyErr) {
+      logger.debug('Token verification rejected', { error: verifyErr.message });
+      return error(res, 'Invalid or expired authentication token', 401);
+    }
+
+    if (verified.type === 'local') {
       req.user = {
-        id: decoded.id,
-        tenantId: decoded.tenantId || decoded.id,
-        email: decoded.email,
-        role: decoded.role || 'user'
+        id: verified.id,
+        tenantId: verified.tenantId || verified.id,
+        email: verified.email,
+        role: verified.role || 'user'
       };
       return next();
-    } catch (localJwtErr) {
-      // If local JWT didn't match, check if Clerk is enabled
-      if (env.CLERK_SECRET_KEY || env.CLERK_PUBLISHABLE_KEY || jwksClient) {
+    }
+
+    if (verified.type === 'clerk') {
+      const clerkSub = verified.sub;
+      // Look up user strictly by verified provider identity (clerkId)
+      let user = await User.findOne({ clerkId: clerkSub });
+
+      if (!user) {
+        // If this is a verified Clerk user not yet in our DB, provision atomically
+        const verifiedEmail = verified.email || `${clerkSub}@clerk.agentops.io`;
         try {
-          const decodedClerk = jwt.decode(token, { complete: true });
-          if (decodedClerk && decodedClerk.payload && decodedClerk.payload.sub) {
-            const clerkSub = decodedClerk.payload.sub;
-            const headerEmail = req.headers['x-clerk-user-email'];
-            const tokenEmail = decodedClerk.payload.email ||
-                               (decodedClerk.payload.email_addresses && decodedClerk.payload.email_addresses[0]?.email_address) ||
-                               '';
-            const clerkEmail = (headerEmail || tokenEmail || '').toLowerCase().trim();
-
-            // Find existing user by clerkId or by email
-            let user = null;
-            if (clerkSub) {
-              user = await User.findOne({ clerkId: clerkSub });
-            }
-            if (!user && clerkEmail) {
-              user = await User.findOne({ email: clerkEmail });
-              if (user) {
-                // Link this existing user to their Clerk identity permanently
-                user.clerkId = clerkSub;
-                await user.save();
-                logger.info(`Associated existing user ${user.email} (${user._id}) with Clerk sub ${clerkSub}`);
+          user = await User.findOneAndUpdate(
+            { clerkId: clerkSub },
+            {
+              $setOnInsert: {
+                email: verifiedEmail,
+                name: verified.name || 'Clerk User',
+                clerkId: clerkSub,
+                role: 'user'
               }
-            }
-
-            // Provision a new user if no match found
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+        } catch (dbErr) {
+          if (dbErr.code === 11000) {
+            // Concurrent provisioning or email collision: fallback to isolated scoped email
+            user = await User.findOne({ clerkId: clerkSub });
             if (!user) {
-              const userName = req.headers['x-clerk-user-name'] || decodedClerk.payload.name || '';
               user = await User.create({
-                email: clerkEmail || `${clerkSub}@clerk.agentops.io`,
-                name: userName,
+                email: `${clerkSub}@clerk.agentops.io`,
+                name: verified.name || 'Clerk User',
                 clerkId: clerkSub,
                 role: 'user'
               });
-              logger.info(`Provisioned new user record for Clerk user ${clerkSub}: ${user.email} (${user._id})`);
             }
-
-            req.user = {
-              id: user._id.toString(),
-              tenantId: user._id.toString(),
-              email: user.email,
-              name: user.name,
-              role: user.role,
-              clerkId: clerkSub
-            };
-            return next();
+          } else {
+            throw dbErr;
           }
-        } catch (clerkErr) {
-          logger.debug('Clerk verification failed', { error: clerkErr.message });
         }
       }
 
-      return error(res, 'Invalid or expired authentication token', 401);
+      req.user = {
+        id: user._id.toString(),
+        tenantId: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        clerkId: clerkSub
+      };
+      return next();
     }
+
+    return error(res, 'Authentication failed', 401);
   } catch (err) {
     logger.error('Authentication error', { error: err.message });
     return error(res, 'Internal authentication error', 500);

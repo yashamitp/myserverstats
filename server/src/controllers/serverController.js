@@ -2,6 +2,7 @@ const Server = require('../models/Server');
 const Metric = require('../models/Metric');
 const Alert = require('../models/Alert');
 const AlertRule = require('../models/AlertRule');
+const AIInvestigation = require('../models/AIInvestigation');
 const AuditEvent = require('../models/AuditEvent');
 const { encrypt } = require('../security/crypto');
 const { testSshConnection } = require('../services/sshService');
@@ -126,13 +127,29 @@ exports.updateServer = async (req, res, next) => {
     if (monitoringInterval !== undefined) server.monitoringInterval = monitoringInterval;
     if (isMonitoringEnabled !== undefined) server.isMonitoringEnabled = isMonitoringEnabled;
     if (username !== undefined) server.username = username;
-    if (authMethod !== undefined) server.authMethod = authMethod;
+    if (authMethod !== undefined) {
+      server.authMethod = authMethod;
+      // Prevent leaving contradictory credentials active when auth method switches
+      if (authMethod === 'password') {
+        server.credentials.encryptedPrivateKey = undefined;
+        server.credentials.keyPassphrase = undefined;
+      } else if (authMethod === 'key') {
+        server.credentials.encryptedPassword = undefined;
+      }
+    }
 
     if (password) {
       server.credentials.encryptedPassword = encrypt(password);
+      if (server.authMethod === 'password') {
+        server.credentials.encryptedPrivateKey = undefined;
+        server.credentials.keyPassphrase = undefined;
+      }
     }
     if (privateKey) {
       server.credentials.encryptedPrivateKey = encrypt(privateKey);
+      if (server.authMethod === 'key') {
+        server.credentials.encryptedPassword = undefined;
+      }
       if (keyPassphrase) {
         server.credentials.keyPassphrase = encrypt(keyPassphrase);
       }
@@ -167,10 +184,11 @@ exports.deleteServer = async (req, res, next) => {
     // Delete server
     await Server.deleteOne({ _id: serverId, tenantId: req.user.tenantId });
 
-    // Clean up related historical metrics and alerts
+    // Clean up related historical metrics, alerts, alert rules, and AI investigations
     await Metric.deleteMany({ serverId, tenantId: req.user.tenantId });
     await Alert.deleteMany({ serverId, tenantId: req.user.tenantId });
     await AlertRule.deleteMany({ serverId, tenantId: req.user.tenantId });
+    await AIInvestigation.deleteMany({ serverId, tenantId: req.user.tenantId });
 
     await AuditEvent.create({
       tenantId: req.user.tenantId,
@@ -255,13 +273,20 @@ exports.testServerConnection = async (req, res, next) => {
 // POST /api/v1/servers/:id/refresh - Trigger instant on-demand monitoring poll
 exports.refreshServer = async (req, res, next) => {
   try {
-    const updatedServer = await monitoringWorker.refreshServerNow(req.server._id);
+    const result = await monitoringWorker.refreshServerNow(req.server._id);
+    if (!result.success) {
+      return error(res, `Server refresh failed: ${result.error || 'Server unreachable'}`, 502, {
+        status: result.server.status,
+        lastContact: result.server.lastContact
+      });
+    }
+
     return success(res, {
-      status: updatedServer.status,
-      lastContact: updatedServer.lastContact,
-      metrics: updatedServer.lastMetrics
+      status: result.server.status,
+      lastContact: result.server.lastContact,
+      metrics: result.server.lastMetrics
     }, 'Server metrics refreshed');
   } catch (err) {
-    return error(res, `Refresh failed: ${err.message}`, 500);
+    return error(res, `Refresh operation failed: ${err.message}`, 500);
   }
 };

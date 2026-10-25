@@ -1,11 +1,10 @@
-const jwt = require('jsonwebtoken');
-const env = require('../config/env');
 const Server = require('../models/Server');
 const User = require('../models/User');
 const logger = require('../config/logger');
+const { verifyAuthToken } = require('../security/tokenVerifier');
 
 function initSocketHandlers(io) {
-  // Authentication middleware for Socket.IO
+  // Cryptographically verified authentication middleware for Socket.IO
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token ||
@@ -15,54 +14,60 @@ function initSocketHandlers(io) {
         return next(new Error('Authentication required for socket connection'));
       }
 
+      let verified;
       try {
-        const decoded = jwt.verify(token, env.JWT_SECRET);
+        verified = await verifyAuthToken(token);
+      } catch (err) {
+        logger.debug('Socket authentication rejected', { error: err.message });
+        return next(new Error('Invalid or expired socket authentication token'));
+      }
+
+      if (verified.type === 'local') {
         socket.user = {
-          id: decoded.id,
-          tenantId: decoded.tenantId || decoded.id,
-          email: decoded.email
+          id: verified.id,
+          tenantId: verified.tenantId || verified.id,
+          email: verified.email
         };
         return next();
-      } catch (jwtErr) {
-        // Fallback for Clerk or test token
-        if (env.CLERK_SECRET_KEY || env.CLERK_PUBLISHABLE_KEY) {
-          const decodedClerk = jwt.decode(token);
-          if (decodedClerk && decodedClerk.sub) {
-            const clerkSub = decodedClerk.sub;
-            const headerEmail = socket.handshake.headers?.['x-clerk-user-email'] || socket.handshake.auth?.email;
-            const tokenEmail = decodedClerk.email || (decodedClerk.email_addresses && decodedClerk.email_addresses[0]?.email_address) || '';
-            const clerkEmail = (headerEmail || tokenEmail || '').toLowerCase().trim();
+      }
 
-            let user = null;
-            if (clerkSub) {
-              user = await User.findOne({ clerkId: clerkSub });
-            }
-            if (!user && clerkEmail) {
-              user = await User.findOne({ email: clerkEmail });
-              if (user) {
-                user.clerkId = clerkSub;
-                await user.save();
-              }
-            }
-            if (!user) {
-              user = await User.create({
-                email: clerkEmail || `${clerkSub}@clerk.agentops.io`,
-                name: socket.handshake.auth?.name || 'Clerk User',
-                clerkId: clerkSub,
-                role: 'user'
-              });
-            }
+      if (verified.type === 'clerk') {
+        const clerkSub = verified.sub;
+        let user = await User.findOne({ clerkId: clerkSub });
 
-            socket.user = {
-              id: user._id.toString(),
-              tenantId: user._id.toString(),
-              email: user.email
-            };
-            return next();
+        if (!user) {
+          const verifiedEmail = verified.email || `${clerkSub}@clerk.agentops.io`;
+          try {
+            user = await User.findOneAndUpdate(
+              { clerkId: clerkSub },
+              {
+                $setOnInsert: {
+                  email: verifiedEmail,
+                  name: verified.name || 'Clerk User',
+                  clerkId: clerkSub,
+                  role: 'user'
+                }
+              },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+          } catch (dbErr) {
+            user = await User.findOne({ clerkId: clerkSub });
           }
         }
-        return next(new Error('Invalid socket authentication token'));
+
+        if (!user) {
+          return next(new Error('Failed to resolve authenticated socket user'));
+        }
+
+        socket.user = {
+          id: user._id.toString(),
+          tenantId: user._id.toString(),
+          email: user.email
+        };
+        return next();
       }
+
+      return next(new Error('Invalid socket authentication identity'));
     } catch (err) {
       logger.error('Socket authentication failed', { error: err.message });
       return next(new Error('Internal socket authentication error'));

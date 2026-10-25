@@ -18,7 +18,7 @@ ENV PORT=5000
 # Install server production dependencies
 COPY server/package*.json ./server/
 WORKDIR /app/server
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy server code
 COPY server/ ./

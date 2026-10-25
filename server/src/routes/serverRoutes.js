@@ -25,7 +25,7 @@ router.get('/:id', authorizeServer, serverController.getServerById);
 router.patch('/:id', authorizeServer, validate(updateServerSchema), serverController.updateServer);
 router.delete('/:id', authorizeServer, serverController.deleteServer);
 router.post('/:id/test-connection', strictLimiter, authorizeServer, serverController.testServerConnection);
-router.post('/:id/refresh', authorizeServer, serverController.refreshServer);
+router.post('/:id/refresh', strictLimiter, authorizeServer, serverController.refreshServer);
 
 // Nested metric & operational inspection routes
 const metricRoutes = require('./metricRoutes');

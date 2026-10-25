@@ -19,6 +19,7 @@
   "author": "AgentOps Team",
   "license": "Apache-2.0",
   "dependencies": {
+    "@clerk/backend": "^3.26.2",
     "agentops": "file:..",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

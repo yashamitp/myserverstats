@@ -87,21 +87,21 @@ describe('AgentOps REST API & Multi-Tenant Integration Tests', () => {
       expect(res.body.data.name).toBe('Alice DevOps');
     });
 
-    it('Clerk auth should seamlessly link to existing user by email and unify tenantId', async () => {
-      // Mock Clerk JWT with a new Clerk sub but matching email
-      const clerkToken = jwt.sign(
-        { sub: 'user_clerk_alice_999', email: 'alice@example.com' },
-        'different_clerk_signing_key'
+    it('Security: Forged Clerk JWT with client-supplied email header must be rejected with 401', async () => {
+      // Attacker attempts to forge a token signed with an arbitrary secret
+      const forgedToken = jwt.sign(
+        { sub: 'user_forged_attacker_123', email: 'alice@example.com' },
+        'untrusted_attacker_secret'
       );
 
       const res = await request(app)
         .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${clerkToken}`)
+        .set('Authorization', `Bearer ${forgedToken}`)
         .set('X-Clerk-User-Email', 'alice@example.com');
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.email).toBe('alice@example.com');
-      expect(res.body.data.tenantId).toBe(user1Id);
+      // Must strictly be rejected with 401 Unauthorized
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
     });
 
     it('should register a second user for tenant isolation testing', async () => {

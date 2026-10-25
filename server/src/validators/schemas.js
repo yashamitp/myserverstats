@@ -26,6 +26,19 @@ const createServerSchema = z.object({
   keyPassphrase: z.string().max(256).optional(),
   tags: z.array(z.string().max(50)).max(10).optional().default([]),
   monitoringInterval: z.number().int().min(5).max(300).default(10)
+}).refine((data) => {
+  if (data.monitoringMethod === 'ssh') {
+    if (data.authMethod === 'password') {
+      return Boolean(data.password && data.password.trim().length > 0);
+    }
+    if (data.authMethod === 'key') {
+      return Boolean(data.privateKey && data.privateKey.trim().length > 0);
+    }
+  }
+  return true;
+}, {
+  message: 'Credentials must match chosen authMethod (password required for password auth, privateKey required for key auth)',
+  path: ['authMethod']
 });
 
 const updateServerSchema = z.object({

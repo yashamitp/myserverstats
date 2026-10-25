@@ -21,7 +21,8 @@ export function SocketProvider({ children }) {
       return;
     }
 
-    const socket = io('/', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || '/';
+    const socket = io(socketUrl, {
       auth: {
         token,
         email: user?.email,

@@ -12,28 +12,28 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGODB_URI=mongodb://mongodb:27017/agentops
-      - JWT_SECRET=change_me_to_a_random_production_secret_32chars!
-      - ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-      - ALLOW_PRIVATE_NETWORKS=false
-      - MONITORING_INTERVAL_SEC=10
-      - CORS_ORIGIN=http://localhost:5000
-      # Optional AI provider configuration
-      # - AI_PROVIDER=openai
-      # - AI_API_KEY=sk-...
-      # - AI_MODEL=gpt-4o-mini
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/agentops}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ALLOW_PRIVATE_NETWORKS=${ALLOW_PRIVATE_NETWORKS:-false}
+      - MONITORING_INTERVAL_SEC=${MONITORING_INTERVAL_SEC:-10}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5000}
+      # Optional AI Provider Configuration
+      - AI_PROVIDER=${AI_PROVIDER:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-}
     depends_on:
       mongodb:
         condition: service_healthy
     networks:
       - agentops-network
 
+  # Internal persistent database (not exposed to host network)
   mongodb:
     image: mongo:7.0
     container_name: agentops-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # Port 27017 is NOT mapped to the host to keep database access internal to Docker network
     volumes:
       - mongo-data:/data/db
     healthcheck:

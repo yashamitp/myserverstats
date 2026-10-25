@@ -8,7 +8,9 @@
     "dev:server": "npm run dev --prefix server",
     "dev:client": "npm run dev --prefix client",
     "test:server": "npm test --prefix server",
-    "build:client": "npm run build --prefix client"
+    "test": "npm test --prefix server",
+    "build:client": "npm run build --prefix client",
+    "build": "npm run build --prefix client"
   },
   "keywords": [
     "server-monitoring",

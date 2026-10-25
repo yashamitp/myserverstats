@@ -277,21 +277,35 @@ Rules:
     while (step < maxSteps) {
       step++;
 
-      // Call LLM endpoint (OpenAI API format compatible with OpenAI, Azure, Gemini OpenAI-endpoint, Ollama, etc.)
-      const response = await fetch(`${env.AI_API_BASE}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${env.AI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: env.AI_MODEL,
-          messages,
-          tools: TOOLS_DEFINITIONS,
-          tool_choice: 'auto',
-          temperature: 0.2
-        })
-      });
+      // Call LLM endpoint with strict 25s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      let response;
+      try {
+        response = await fetch(`${env.AI_API_BASE}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.AI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: env.AI_MODEL,
+            messages,
+            tools: TOOLS_DEFINITIONS,
+            tool_choice: 'auto',
+            temperature: 0.2
+          }),
+          signal: controller.signal
+        });
+      } catch (fetchErr) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('AI Provider request timed out after 25 seconds');
+        }
+        throw fetchErr;
+      }
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errText = await response.text();

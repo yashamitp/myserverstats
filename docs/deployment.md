@@ -21,7 +21,7 @@ AgentOps provides a multi-stage `Dockerfile` and a production `docker-compose.ym
 
 ### Step 1: Clone Repository on Production Server
 ```bash
-git clone https://github.com/your-org/agentops.git /opt/agentops
+git clone https://github.com/yashamitp/myserverstats.git /opt/agentops
 cd /opt/agentops
 ```
 

@@ -21,6 +21,7 @@ const userSchema = new mongoose.Schema({
   clerkId: {
     type: String,
     sparse: true,
+    unique: true,
     index: true
   },
   role: {
