@@ -275,7 +275,7 @@ export default function SettingsPage() {
               <span className="text-slate-400 block mt-0.5">
                 {isSmtpConfigured
                   ? 'Email notifications will be delivered for critical incidents and recovery events.'
-                  : 'Configure environment variables (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS) or enable custom SMTP below.'}
+                  : 'Platform SMTP service is offline. Please verify server SMTP configuration.'}
               </span>
             </div>
           </div>
@@ -373,79 +373,6 @@ export default function SettingsPage() {
                   <span>Send Recovery Email when Cleared</span>
                 </label>
               </div>
-            </div>
-
-            {/* Custom SMTP Toggle */}
-            <div className="pt-4 border-t border-slate-800/80 space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={emailPrefs.customSmtp?.enabled}
-                  onChange={(e) => setEmailPrefs(prev => ({
-                    ...prev,
-                    customSmtp: { ...prev.customSmtp, enabled: e.target.checked }
-                  }))}
-                  className="rounded bg-dark-900 border-slate-700 text-brand-500 focus:ring-0"
-                />
-                <span className="font-semibold text-white">Override with Custom Tenant SMTP Credentials</span>
-              </label>
-
-              {emailPrefs.customSmtp?.enabled && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-dark-900 rounded-xl border border-slate-800 text-xs">
-                  <div>
-                    <label className="block text-slate-400 mb-1">SMTP Host</label>
-                    <input
-                      type="text"
-                      placeholder="smtp.mailgun.org / smtp.gmail.com"
-                      value={emailPrefs.customSmtp?.host || ''}
-                      onChange={(e) => setEmailPrefs(prev => ({
-                        ...prev,
-                        customSmtp: { ...prev.customSmtp, host: e.target.value }
-                      }))}
-                      className="w-full px-3 py-1.5 bg-dark-950 border border-slate-800 rounded-lg text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Port</label>
-                    <input
-                      type="number"
-                      placeholder="587"
-                      value={emailPrefs.customSmtp?.port || 587}
-                      onChange={(e) => setEmailPrefs(prev => ({
-                        ...prev,
-                        customSmtp: { ...prev.customSmtp, port: parseInt(e.target.value, 10) }
-                      }))}
-                      className="w-full px-3 py-1.5 bg-dark-950 border border-slate-800 rounded-lg text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Username</label>
-                    <input
-                      type="text"
-                      placeholder="postmaster@yourdomain.com"
-                      value={emailPrefs.customSmtp?.user || ''}
-                      onChange={(e) => setEmailPrefs(prev => ({
-                        ...prev,
-                        customSmtp: { ...prev.customSmtp, user: e.target.value }
-                      }))}
-                      className="w-full px-3 py-1.5 bg-dark-950 border border-slate-800 rounded-lg text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 mb-1">Password</label>
-                    <input
-                      type="password"
-                      placeholder="••••••••••••"
-                      value={emailPrefs.customSmtp?.pass || ''}
-                      onChange={(e) => setEmailPrefs(prev => ({
-                        ...prev,
-                        customSmtp: { ...prev.customSmtp, pass: e.target.value }
-                      }))}
-                      className="w-full px-3 py-1.5 bg-dark-950 border border-slate-800 rounded-lg text-white font-mono"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Save & Test Buttons */}
