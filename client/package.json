@@ -11,6 +11,8 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.61.11",
     "@clerk/themes": "^2.4.57",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "agentops": "file:..",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",

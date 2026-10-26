@@ -2,7 +2,7 @@ const env = require('../config/env');
 const Server = require('../models/Server');
 const Metric = require('../models/Metric');
 const Alert = require('../models/Alert');
-const AIInvestigation = require('../models/AIInvestigation');
+const Incident = require('../models/Incident');
 const AuditEvent = require('../models/AuditEvent');
 const { getMonitoringCollector } = require('../services/monitoringAdapter');
 const logger = require('../config/logger');
@@ -234,8 +234,11 @@ class AIService {
       }
 
       case 'get_active_alerts': {
-        const alerts = await Alert.find({ serverId: server._id, tenantId, status: 'active' }).lean();
-        return alerts;
+        const [alerts, incidents] = await Promise.all([
+          Alert.find({ serverId: server._id, tenantId, status: 'active' }).lean(),
+          Incident.find({ serverId: server._id, tenantId, status: 'active' }).lean()
+        ]);
+        return { activeAlerts: alerts, activeIncidents: incidents };
       }
 
       default:
@@ -254,15 +257,30 @@ class AIService {
       throw err;
     }
 
-    const systemPrompt = `You are AgentOps AI, an expert Linux infrastructure troubleshooter and DevOps engineer.
-Your task is to investigate issues on the user's remote Linux server "${server.name}" (${server.hostname}, OS: ${server.os?.distro || 'Ubuntu Linux'}).
-Rules:
-1. ONLY make claims based on actual metrics, logs, and processes retrieved using your tools.
-2. If data is not available, explicitly state that it could not be observed.
+    const isWindows = server.os?.distro === 'windows';
+    const osDescription = isWindows
+      ? `Windows Server (${server.os?.distroName || 'Windows'}, Arch: ${server.os?.arch || 'x86_64'})`
+      : `Linux (${server.os?.distroName || server.os?.distro || 'Ubuntu'}, Kernel: ${server.os?.kernel || 'Linux'})`;
+
+    const systemPrompt = `You are AgentOps 2.0 AI, an expert cross-platform infrastructure troubleshooter and systems reliability engineer.
+Your task is to investigate issues on the user's remote server "${server.name}" (${server.hostname}, Target Platform: ${osDescription}).
+
+MANDATORY RULES:
+1. ONLY make claims based on actual metrics, logs, services, and processes retrieved using your tools.
+2. If data is missing or server is offline, clearly distinguish live tool calls from previously cached historical evidence. Never assume missing data equals zero.
 3. Never invent or hallucinate metrics, command outputs, or uptime statistics.
-4. Distinguish between confirmed observations and hypotheses.
-5. Provide safe, verified troubleshooting steps and remediation commands.
-6. Keep recommendations actionable, concise, and structured.`;
+4. Distinguish confirmed observations from hypotheses.
+5. All operations are strictly read-only diagnostics; do not attempt or suggest destructive commands without explicit operator authorization.
+6. Format your final diagnosis with the following structured sections:
+   ### 1. Problem Summary
+   ### 2. Evidence Collected (Live vs. Historical)
+   ### 3. Relevant Timestamps
+   ### 4. Likely Root Cause
+   ### 5. Confidence and Uncertainty
+   ### 6. Alternative Explanations
+   ### 7. Recommended Next Steps
+   ### 8. Verification Procedure
+   ### 9. Limitations (Missing or Stale Telemetry)`;
 
     const messages = [
       { role: 'system', content: systemPrompt },

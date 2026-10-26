@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import { Radio, LogOut, User, Bell } from 'lucide-react';
+import { Radio, LogOut, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import NotificationBell from './NotificationBell';
 
 export default function Navbar({ title = 'Dashboard' }) {
   const { user, logout } = useAuth();
@@ -28,6 +29,9 @@ export default function Navbar({ title = 'Dashboard' }) {
             {isConnected ? 'Real-Time Connected' : 'Reconnecting...'}
           </span>
         </div>
+
+        {/* In-App Notification Center Bell */}
+        <NotificationBell />
 
         {/* User Account */}
         <div className="flex items-center gap-3 pl-2 border-l border-slate-800">

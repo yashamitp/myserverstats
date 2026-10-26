@@ -6,6 +6,7 @@ const logger = require('./config/logger');
 const { connectDB, disconnectDB } = require('./config/db');
 const { initSocketHandlers } = require('./sockets/socketHandler');
 const monitoringWorker = require('./workers/monitoringWorker');
+const notificationQueue = require('./notifications/notificationQueue');
 
 async function bootstrap() {
   try {
@@ -28,10 +29,12 @@ async function bootstrap() {
     });
 
     // 3. Initialize Socket.IO authenticated rooms and handlers
+    app.set('io', io);
     initSocketHandlers(io);
 
-    // 4. Start background monitoring worker scheduler
+    // 4. Start background monitoring worker and notification queue
     monitoringWorker.start(io, (env.MONITORING_INTERVAL_SEC || 10) * 1000);
+    notificationQueue.start(15000);
 
     // 5. Start listening
     const server = httpServer.listen(env.PORT, () => {
@@ -45,6 +48,7 @@ async function bootstrap() {
     const shutdown = async (signal) => {
       logger.info(`Received ${signal}. Shutting down gracefully...`);
       monitoringWorker.stop();
+      notificationQueue.stop();
       io.close();
       server.close(async () => {
         await disconnectDB();

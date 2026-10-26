@@ -12,6 +12,12 @@ const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const serverRoutes = require('./routes/serverRoutes');
 const alertRoutes = require('./routes/alertRoutes');
+const incidentRoutes = require('./routes/incidentRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const notificationPreferenceRoutes = require('./routes/notificationPreferenceRoutes');
+const monitoringProfileRoutes = require('./routes/monitoringProfileRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 
@@ -72,6 +78,12 @@ app.use('/api/v1/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec));
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/servers', serverRoutes);
 app.use('/api/v1/alerts', alertRoutes);
+app.use('/api/v1/incidents', incidentRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/notification-preferences', notificationPreferenceRoutes);
+app.use('/api/v1/profiles', monitoringProfileRoutes);
+app.use('/api/v1/maintenance', maintenanceRoutes);
+app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/audit', auditRoutes);
 

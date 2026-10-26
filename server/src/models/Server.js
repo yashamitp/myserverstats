@@ -65,6 +65,11 @@ const serverSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  monitoringProfileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MonitoringProfile',
+    default: null
+  },
   monitoringInterval: {
     type: Number,
     default: 10,

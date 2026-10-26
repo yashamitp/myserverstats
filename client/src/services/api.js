@@ -109,6 +109,51 @@ export const api = {
   aiAnalyze: (serverId, focus) => request(`/ai/servers/${serverId}/analyze`, { method: 'POST', body: JSON.stringify({ focus }) }),
   aiInsights: (serverId) => request(`/ai/servers/${serverId}/insights`),
 
+  // Incidents
+  getIncidents: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/incidents${q ? `?${q}` : ''}`);
+  },
+  getIncident: (id) => request(`/incidents/${id}`),
+  acknowledgeIncident: (id) => request(`/incidents/${id}/acknowledge`, { method: 'PATCH' }),
+  resolveIncident: (id) => request(`/incidents/${id}/resolve`, { method: 'PATCH' }),
+
+  // Notifications
+  getNotifications: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/notifications${q ? `?${q}` : ''}`);
+  },
+  getUnreadNotificationCount: () => request('/notifications/unread-count'),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsRead: () => request('/notifications/read-all', { method: 'PATCH' }),
+
+  // Notification Preferences & SMTP
+  getNotificationPreferences: () => request('/notification-preferences'),
+  updateNotificationPreferences: (body) => request('/notification-preferences', { method: 'PUT', body: JSON.stringify(body) }),
+  sendTestEmail: (body = {}) => request('/notification-preferences/test-email', { method: 'POST', body: JSON.stringify(body) }),
+  getDeliveryHistory: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/notification-preferences/deliveries${q ? `?${q}` : ''}`);
+  },
+
+  // Monitoring Profiles
+  getProfiles: () => request('/profiles'),
+  createProfile: (body) => request('/profiles', { method: 'POST', body: JSON.stringify(body) }),
+  updateProfile: (id, body) => request(`/profiles/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteProfile: (id) => request(`/profiles/${id}`, { method: 'DELETE' }),
+  assignProfile: (id, serverIds) => request(`/profiles/${id}/assign`, { method: 'POST', body: JSON.stringify({ serverIds }) }),
+
+  // Maintenance Windows
+  getMaintenanceWindows: () => request('/maintenance'),
+  createMaintenanceWindow: (body) => request('/maintenance', { method: 'POST', body: JSON.stringify(body) }),
+  updateMaintenanceWindow: (id, body) => request(`/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteMaintenanceWindow: (id) => request(`/maintenance/${id}`, { method: 'DELETE' }),
+
+  // Scheduled Health Reports
+  getReportConfig: () => request('/reports/config'),
+  updateReportConfig: (body) => request('/reports/config', { method: 'PUT', body: JSON.stringify(body) }),
+  generateReportNow: (body = {}) => request('/reports/generate-now', { method: 'POST', body: JSON.stringify(body) }),
+
   // Audit
   getAuditLogs: () => request('/audit')
 };

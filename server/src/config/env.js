@@ -104,6 +104,15 @@ const env = {
   // Logging
   LOG_LEVEL: process.env.LOG_LEVEL || 'info',
 
+  // Email & Notifications (SMTP)
+  SMTP_HOST: process.env.SMTP_HOST || '',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT, 10) || 587,
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  SMTP_USER: process.env.SMTP_USER || '',
+  SMTP_PASS: process.env.SMTP_PASS || '',
+  SMTP_FROM: process.env.SMTP_FROM || 'alerts@agentops.io',
+  SMTP_FROM_NAME: process.env.SMTP_FROM_NAME || 'AgentOps 2.0',
+
   // Validation function export for testing
   validateConfig
 };

@@ -154,6 +154,14 @@ class MonitoringWorker {
       await server.save();
       collectionSuccess = true;
 
+      // If server recovered from unreachable state, resolve any active unreachable alerts
+      await alertService.handleAlertState(server, 'unreachable', false, {
+        severity: 'critical',
+        message: 'Server has recovered and is reachable',
+        triggerValue: 'online',
+        resourceKey: 'connectivity'
+      }, this.io);
+
       // Check alerts
       await alertService.evaluateMetrics(server, snapshot, this.io);
 

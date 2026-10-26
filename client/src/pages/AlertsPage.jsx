@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import AlertsList from '../components/AlertsList';
-import { Bell, Plus, Filter, ShieldAlert } from 'lucide-react';
+import IncidentsList from '../components/IncidentsList';
+import { Bell, Plus, Filter, ShieldAlert, Activity, AlertTriangle } from 'lucide-react';
 
 export default function AlertsPage() {
+  const [activeView, setActiveView] = useState('incidents'); // 'incidents' | 'rules'
+  const [incidents, setIncidents] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [servers, setServers] = useState([]);
   const [statusFilter, setStatusFilter] = useState('');
@@ -18,10 +21,19 @@ export default function AlertsPage() {
   const [ruleServerId, setRuleServerId] = useState('');
   const [isCreatingRule, setIsCreatingRule] = useState(false);
 
-  const fetchAlerts = async () => {
+  const fetchIncidentsAndAlerts = async () => {
+    setIsLoading(true);
     try {
-      const res = await api.getAlerts(statusFilter || undefined);
-      setAlerts(res.data || []);
+      const params = {};
+      if (statusFilter) params.status = statusFilter;
+
+      const [incidentsRes, alertsRes] = await Promise.all([
+        api.getIncidents(params),
+        api.getAlerts(statusFilter || undefined)
+      ]);
+
+      setIncidents(incidentsRes?.data?.incidents || []);
+      setAlerts(alertsRes?.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -30,9 +42,27 @@ export default function AlertsPage() {
   };
 
   useEffect(() => {
-    fetchAlerts();
+    fetchIncidentsAndAlerts();
     api.getServers().then((res) => setServers(res.data || [])).catch(() => {});
   }, [statusFilter]);
+
+  const handleAcknowledgeIncident = async (id) => {
+    try {
+      await api.acknowledgeIncident(id);
+      fetchIncidentsAndAlerts();
+    } catch (err) {
+      console.error('Failed to acknowledge incident:', err);
+    }
+  };
+
+  const handleResolveIncident = async (id) => {
+    try {
+      await api.resolveIncident(id);
+      fetchIncidentsAndAlerts();
+    } catch (err) {
+      console.error('Failed to resolve incident:', err);
+    }
+  };
 
   const handleCreateRule = async (e) => {
     e.preventDefault();
@@ -47,7 +77,7 @@ export default function AlertsPage() {
       });
       setShowRuleModal(false);
       setRuleName('');
-      alert('Alert rule configured successfully');
+      fetchIncidentsAndAlerts();
     } catch (err) {
       alert(`Rule creation failed: ${err.message}`);
     } finally {
@@ -55,10 +85,10 @@ export default function AlertsPage() {
     }
   };
 
-  const handleAcknowledge = async (alertId) => {
+  const handleAcknowledgeAlert = async (alertId) => {
     try {
       await api.acknowledgeAlert(alertId);
-      fetchAlerts();
+      fetchIncidentsAndAlerts();
     } catch (err) {
       console.error(err);
     }
@@ -76,6 +106,28 @@ export default function AlertsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-dark-850 border border-slate-800 p-1 rounded-xl text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveView('incidents')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                activeView === 'incidents' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Incidents ({incidents.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('rules')}
+              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                activeView === 'rules' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Alerts ({alerts.length})
+            </button>
+          </div>
+
           {/* Status Filter */}
           <div className="flex items-center gap-1 bg-dark-850 border border-slate-800 p-1 rounded-xl text-xs">
             <button
@@ -118,11 +170,17 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* Alerts List */}
+      {/* Incident / Alert List */}
       {isLoading ? (
-        <div className="py-12 text-center text-xs text-slate-400">Loading alerts...</div>
+        <div className="py-12 text-center text-xs text-slate-400">Loading incident and alert data...</div>
+      ) : activeView === 'incidents' ? (
+        <IncidentsList
+          incidents={incidents}
+          onAcknowledge={handleAcknowledgeIncident}
+          onResolve={handleResolveIncident}
+        />
       ) : (
-        <AlertsList alerts={alerts} onAcknowledge={handleAcknowledge} />
+        <AlertsList alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
       )}
 
       {/* New Rule Modal */}

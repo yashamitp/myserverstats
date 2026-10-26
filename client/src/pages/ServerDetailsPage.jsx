@@ -9,6 +9,7 @@ import ProcessTable from '../components/ProcessTable';
 import ServicesTable from '../components/ServicesTable';
 import LogsViewer from '../components/LogsViewer';
 import AlertsList from '../components/AlertsList';
+import ConsoleTerminal from '../components/ConsoleTerminal';
 import EditServerModal from '../components/EditServerModal';
 import DeleteServerModal from '../components/DeleteServerModal';
 import {
@@ -21,6 +22,7 @@ import {
   ListOrdered,
   Layers,
   Terminal,
+  TerminalSquare,
   Bell,
   Sparkles,
   Settings,
@@ -289,6 +291,7 @@ export default function ServerDetailsPage() {
     { id: 'processes', label: 'Processes', icon: ListOrdered },
     { id: 'services', label: 'Services', icon: Layers },
     { id: 'logs', label: 'Logs', icon: Terminal },
+    { id: 'console', label: 'Console', icon: TerminalSquare },
     { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'ai', label: 'AI Assistant', icon: Sparkles, highlight: true },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -641,6 +644,11 @@ export default function ServerDetailsPage() {
             setTimeout(() => loadLogs(), 50);
           }}
         />
+      )}
+
+      {/* Tab: CONSOLE */}
+      {activeTab === 'console' && (
+        <ConsoleTerminal server={server} />
       )}
 
       {/* Tab 9: ALERTS */}

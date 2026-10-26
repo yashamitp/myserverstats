@@ -1,38 +1,88 @@
 const Alert = require('../models/Alert');
 const AlertRule = require('../models/AlertRule');
+const MonitoringProfile = require('../models/MonitoringProfile');
+const incidentService = require('./incidentService');
 const logger = require('../config/logger');
 
 class AlertService {
   /**
-   * Evaluate a fresh metrics snapshot against active rules for a server
+   * Evaluate a fresh metrics snapshot against active rules and monitoring profile for a server
    */
   async evaluateMetrics(server, metrics, io = null) {
     try {
       const tenantId = server.tenantId;
       const serverId = server._id;
 
-      // Find all rules applicable to this server or tenant-wide
-      const rules = await AlertRule.find({
+      // 1. Resolve Monitoring Profile (custom assigned or tenant default)
+      let profile = null;
+      if (server.monitoringProfileId) {
+        profile = await MonitoringProfile.findOne({
+          _id: server.monitoringProfileId,
+          tenantId
+        });
+      }
+      if (!profile) {
+        profile = await MonitoringProfile.findOne({
+          tenantId,
+          isDefault: true
+        });
+      }
+
+      // 2. Find any custom per-server/tenant alert rules
+      const customRules = await AlertRule.find({
         tenantId,
         isEnabled: true,
         $or: [{ serverId: serverId }, { serverId: null }]
       });
 
-      // Default built-in threshold rules if no custom rules configured
-      const effectiveRules = rules.length > 0 ? rules : [
-        { metricType: 'cpu', threshold: 90, severity: 'warning', name: 'High CPU Usage' },
-        { metricType: 'memory', threshold: 90, severity: 'warning', name: 'High Memory Usage' },
-        { metricType: 'disk', threshold: 90, severity: 'warning', name: 'High Disk Usage' }
-      ];
+      // Build effective rules prioritizing custom rules, then profile, then built-in defaults
+      const effectiveRules = [];
+
+      if (customRules.length > 0) {
+        effectiveRules.push(...customRules);
+      } else if (profile && profile.thresholds) {
+        if (profile.thresholds.cpu?.enabled) {
+          effectiveRules.push({
+            metricType: 'cpu',
+            threshold: profile.thresholds.cpu.threshold || 85,
+            severity: profile.thresholds.cpu.severity || 'warning',
+            name: `${profile.name} - CPU Threshold`
+          });
+        }
+        if (profile.thresholds.memory?.enabled) {
+          effectiveRules.push({
+            metricType: 'memory',
+            threshold: profile.thresholds.memory.threshold || 90,
+            severity: profile.thresholds.memory.severity || 'warning',
+            name: `${profile.name} - Memory Threshold`
+          });
+        }
+        if (profile.thresholds.disk?.enabled) {
+          effectiveRules.push({
+            metricType: 'disk',
+            threshold: profile.thresholds.disk.threshold || 90,
+            severity: profile.thresholds.disk.severity || 'critical',
+            name: `${profile.name} - Disk Threshold`
+          });
+        }
+      } else {
+        effectiveRules.push(
+          { metricType: 'cpu', threshold: 90, severity: 'warning', name: 'High CPU Usage' },
+          { metricType: 'memory', threshold: 90, severity: 'warning', name: 'High Memory Usage' },
+          { metricType: 'disk', threshold: 90, severity: 'warning', name: 'High Disk Usage' }
+        );
+      }
 
       for (const rule of effectiveRules) {
         let isBreached = false;
         let triggerValue = 0;
         let alertType = '';
         let message = '';
+        let resourceKey = 'system';
 
         if (rule.metricType === 'cpu' && metrics.cpu) {
           alertType = 'cpu_high';
+          resourceKey = 'cpu';
           triggerValue = metrics.cpu.usagePercent || 0;
           if (triggerValue >= rule.threshold) {
             isBreached = true;
@@ -40,6 +90,7 @@ class AlertService {
           }
         } else if (rule.metricType === 'memory' && metrics.memory) {
           alertType = 'memory_high';
+          resourceKey = 'memory';
           triggerValue = metrics.memory.usagePercent || 0;
           if (triggerValue >= rule.threshold) {
             isBreached = true;
@@ -48,6 +99,7 @@ class AlertService {
         } else if (rule.metricType === 'disk' && Array.isArray(metrics.disk)) {
           alertType = 'disk_high';
           const maxDisk = metrics.disk.reduce((max, d) => d.usagePercent > max.usagePercent ? d : max, { usagePercent: 0, mount: '/' });
+          resourceKey = maxDisk.mount || '/';
           triggerValue = maxDisk.usagePercent;
           if (triggerValue >= rule.threshold) {
             isBreached = true;
@@ -58,10 +110,12 @@ class AlertService {
         if (alertType) {
           await this.handleAlertState(server, alertType, isBreached, {
             severity: rule.severity || 'warning',
+            title: rule.name || `${alertType.replace('_', ' ').toUpperCase()} on ${server.name}`,
             message,
             triggerValue,
             threshold: rule.threshold,
-            ruleId: rule._id || null
+            ruleId: rule._id || null,
+            resourceKey
           }, io);
         }
       }
@@ -78,67 +132,21 @@ class AlertService {
     const message = `Server ${server.name} (${server.hostname}) is unreachable: ${errorMessage}`;
     await this.handleAlertState(server, alertType, true, {
       severity: 'critical',
+      title: `Server Unreachable: ${server.name}`,
       message,
       triggerValue: 'unreachable',
       threshold: 'online',
-      ruleId: null
+      ruleId: null,
+      resourceKey: 'connectivity'
     }, io);
   }
 
   /**
-   * Deduplicate, fire or resolve alert
+   * Deduplicate, fire or resolve alert and incident
    */
   async handleAlertState(server, type, isBreached, data, io = null) {
-    const activeAlert = await Alert.findOne({
-      serverId: server._id,
-      tenantId: server.tenantId,
-      type,
-      status: 'active'
-    });
-
-    if (isBreached) {
-      if (!activeAlert) {
-        // Create new active alert
-        const newAlert = await Alert.create({
-          tenantId: server.tenantId,
-          serverId: server._id,
-          serverName: server.name,
-          type,
-          severity: data.severity,
-          message: data.message,
-          triggerValue: data.triggerValue,
-          threshold: data.threshold,
-          ruleId: data.ruleId,
-          status: 'active'
-        });
-
-        logger.warn('Alert triggered', { serverId: server._id, type, message: data.message });
-
-        if (io) {
-          io.to(`tenant:${server.tenantId}`).emit('alert:created', newAlert);
-          io.to(`server:${server._id}`).emit('alert:created', newAlert);
-        }
-      } else {
-        // Update triggering value without spamming
-        activeAlert.triggerValue = data.triggerValue;
-        activeAlert.message = data.message;
-        await activeAlert.save();
-      }
-    } else {
-      // Condition cleared: resolve existing active alert if present
-      if (activeAlert) {
-        activeAlert.status = 'resolved';
-        activeAlert.resolvedAt = new Date();
-        await activeAlert.save();
-
-        logger.info('Alert resolved', { serverId: server._id, type });
-
-        if (io) {
-          io.to(`tenant:${server.tenantId}`).emit('alert:resolved', activeAlert);
-          io.to(`server:${server._id}`).emit('alert:resolved', activeAlert);
-        }
-      }
-    }
+    // Delegate to unified IncidentService for durable deduplication, occurrences, recovery & notifications
+    await incidentService.handleIncidentState(server, type, isBreached, data, io);
   }
 }
 

@@ -9,6 +9,8 @@ export function SocketProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const [liveServerMetrics, setLiveServerMetrics] = useState({});
   const [recentAlerts, setRecentAlerts] = useState([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [recentNotifications, setRecentNotifications] = useState([]);
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -90,6 +92,12 @@ export function SocketProvider({ children }) {
       );
     });
 
+    // Real-time notification events
+    socket.on('notification:new', (notif) => {
+      setUnreadNotificationCount((prev) => prev + 1);
+      setRecentNotifications((prev) => [notif, ...prev.slice(0, 19)]);
+    });
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
@@ -110,9 +118,13 @@ export function SocketProvider({ children }) {
 
   return (
     <SocketContext.Provider value={{
+      socket: socketRef.current,
       isConnected,
       liveServerMetrics,
       recentAlerts,
+      unreadNotificationCount,
+      setUnreadNotificationCount,
+      recentNotifications,
       subscribeToServer,
       unsubscribeFromServer
     }}>

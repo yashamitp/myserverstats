@@ -2,6 +2,7 @@ const Server = require('../models/Server');
 const User = require('../models/User');
 const logger = require('../config/logger');
 const { verifyAuthToken } = require('../security/tokenVerifier');
+const consoleSessionManager = require('../services/consoleSessionManager');
 
 function initSocketHandlers(io) {
   // Cryptographically verified authentication middleware for Socket.IO
@@ -126,7 +127,53 @@ function initSocketHandlers(io) {
       }
     });
 
+    // Interactive Web Console (PTY) Handlers
+    socket.on('console:start', async (data) => {
+      try {
+        const { serverId, cols, rows } = data || {};
+        if (!serverId) {
+          return socket.emit('console:error', { message: 'serverId is required to open a console session' });
+        }
+
+        const session = await consoleSessionManager.createSession({
+          serverId,
+          tenantId: socket.user.tenantId,
+          userId: socket.user.id,
+          socket,
+          initialCols: cols,
+          initialRows: rows
+        });
+
+        socket.emit('console:ready', session);
+      } catch (err) {
+        logger.error('Failed to start console session', { error: err.message });
+        socket.emit('console:error', { message: err.message || 'Failed to start console session' });
+      }
+    });
+
+    socket.on('console:input', (data) => {
+      const { sessionId, data: input } = data || {};
+      if (sessionId && input !== undefined) {
+        consoleSessionManager.handleInput(sessionId, input, socket.user.tenantId);
+      }
+    });
+
+    socket.on('console:resize', (data) => {
+      const { sessionId, cols, rows } = data || {};
+      if (sessionId && cols && rows) {
+        consoleSessionManager.handleResize(sessionId, cols, rows, socket.user.tenantId);
+      }
+    });
+
+    socket.on('console:close', (data) => {
+      const { sessionId } = data || {};
+      if (sessionId) {
+        consoleSessionManager.closeSession(sessionId, 'User closed terminal');
+      }
+    });
+
     socket.on('disconnect', (reason) => {
+      consoleSessionManager.handleSocketDisconnect(socket.id);
       logger.debug('Socket client disconnected', { socketId: socket.id, reason });
     });
   });
