@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/monitoringProfileController');
-const { requireAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
-router.use(requireAuth);
+router.use(authenticate);
 
 router.get('/', controller.getProfiles);
 router.post('/', controller.createProfile);

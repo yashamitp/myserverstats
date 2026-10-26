@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/maintenanceController');
-const { requireAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
-router.use(requireAuth);
+router.use(authenticate);
 
 router.get('/', controller.getMaintenanceWindows);
 router.post('/', controller.createMaintenanceWindow);

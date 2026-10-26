@@ -142,6 +142,7 @@ function requireRole(role) {
 
 module.exports = {
   authenticate,
+  requireAuth: authenticate,
   authorizeServer,
   requireRole
 };

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const incidentController = require('../controllers/incidentController');
-const { requireAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
-router.use(requireAuth);
+router.use(authenticate);
 
 router.get('/', incidentController.getIncidents);
 router.get('/:id', incidentController.getIncidentById);
