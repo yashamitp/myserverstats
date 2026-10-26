@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useSocket } from '../contexts/SocketContext';
+import WindowsRdpConsole from './WindowsRdpConsole';
 import {
   Terminal as TerminalIcon,
   RefreshCw,
@@ -15,6 +16,11 @@ import {
 } from 'lucide-react';
 
 export default function ConsoleTerminal({ server }) {
+  const isWindows = server.os?.distro === 'windows' || server.port === 3389 || server.monitoringMethod === 'rdp';
+  if (isWindows) {
+    return <WindowsRdpConsole server={server} />;
+  }
+
   const { socket, isConnected: isSocketConnected } = useSocket();
   const terminalRef = useRef(null);
   const xtermInstance = useRef(null);
@@ -35,8 +41,7 @@ export default function ConsoleTerminal({ server }) {
   sessionIdRef.current = sessionId;
   socketRef.current = socket;
 
-  const isWindows = server.os?.distro === 'windows';
-  const shellName = isWindows ? 'PowerShell' : 'Bash / Sh';
+  const shellName = 'Bash / Sh';
 
   // Duration timer
   useEffect(() => {

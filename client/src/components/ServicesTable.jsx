@@ -6,14 +6,15 @@ export default function ServicesTable({ services = [], isLoading = false }) {
   const [stateFilter, setStateFilter] = useState('all');
 
   const filtered = services.filter((s) => {
-    const matchesSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.description && s.description.toLowerCase().includes(search.toLowerCase()));
+    const nameStr = (s.name || s.unit || s.displayName || '').toLowerCase();
+    const descStr = (s.description || s.displayName || '').toLowerCase();
+    const q = search.toLowerCase();
+    const matchesSearch = nameStr.includes(q) || descStr.includes(q);
 
     if (!matchesSearch) return false;
 
-    if (stateFilter === 'running') return s.sub === 'running';
-    if (stateFilter === 'failed') return s.active === 'failed' || s.sub === 'failed';
+    if (stateFilter === 'running') return s.sub === 'running' || s.status === 'running' || s.active === 'active';
+    if (stateFilter === 'failed') return s.active === 'failed' || s.sub === 'failed' || s.status === 'failed';
     return true;
   });
 

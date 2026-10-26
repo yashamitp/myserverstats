@@ -17,12 +17,13 @@ export default function ProcessTable({ processes = [], isLoading = false }) {
     }
   };
 
-  const filtered = processes.filter(
-    (p) =>
-      p.command.toLowerCase().includes(search.toLowerCase()) ||
-      p.user.toLowerCase().includes(search.toLowerCase()) ||
-      p.pid.toString().includes(search)
-  );
+  const filtered = processes.filter((p) => {
+    const cmd = (p.command || p.name || '').toLowerCase();
+    const usr = (p.user || '').toLowerCase();
+    const pidStr = (p.pid || '').toString();
+    const q = search.toLowerCase();
+    return cmd.includes(q) || usr.includes(q) || pidStr.includes(q);
+  });
 
   const sorted = [...filtered].sort((a, b) => {
     let aVal = a[sortField];

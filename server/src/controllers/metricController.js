@@ -81,7 +81,7 @@ exports.getProcesses = async (req, res, next) => {
     const server = await Server.findById(req.server._id)
       .select('+credentials.encryptedPrivateKey +credentials.encryptedPassword +credentials.keyPassphrase');
 
-    const collector = getMonitoringCollector(server.monitoringMethod);
+    const collector = getMonitoringCollector(server.monitoringMethod, server);
     const processes = await collector.getProcesses(server);
 
     return success(res, {
@@ -99,7 +99,7 @@ exports.getServices = async (req, res, next) => {
     const server = await Server.findById(req.server._id)
       .select('+credentials.encryptedPrivateKey +credentials.encryptedPassword +credentials.keyPassphrase');
 
-    const collector = getMonitoringCollector(server.monitoringMethod);
+    const collector = getMonitoringCollector(server.monitoringMethod, server);
     const services = await collector.getServices(server);
 
     return success(res, {
@@ -119,7 +119,7 @@ exports.getLogs = async (req, res, next) => {
 
     const { lines = 50, service, severity } = req.query;
 
-    const collector = getMonitoringCollector(server.monitoringMethod);
+    const collector = getMonitoringCollector(server.monitoringMethod, server);
     const logs = await collector.getLogs(server, {
       lines: parseInt(lines, 10),
       service,
