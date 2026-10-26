@@ -220,7 +220,12 @@ class ConsoleSessionManager {
    */
   handleInput(sessionId, input, tenantId) {
     const session = this.sessions.get(sessionId);
-    if (!session || session.tenantId !== tenantId) {
+    if (!session) {
+      logger.debug('console:input for unknown session', { sessionId });
+      return;
+    }
+    if (String(session.tenantId) !== String(tenantId)) {
+      logger.warn('console:input tenant mismatch', { sessionTenant: session.tenantId, requestTenant: tenantId });
       return;
     }
 
@@ -235,7 +240,7 @@ class ConsoleSessionManager {
    */
   handleResize(sessionId, cols, rows, tenantId) {
     const session = this.sessions.get(sessionId);
-    if (!session || session.tenantId !== tenantId) {
+    if (!session || String(session.tenantId) !== String(tenantId)) {
       return;
     }
 

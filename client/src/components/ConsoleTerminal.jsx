@@ -26,6 +26,15 @@ export default function ConsoleTerminal({ server }) {
   const [sessionStartTime, setSessionStartTime] = useState(null);
   const [durationSec, setDurationSec] = useState(0);
 
+  // References to eliminate stale closures in event listeners
+  const sessionIdRef = useRef(null);
+  const socketRef = useRef(null);
+  const autoConnectedRef = useRef(false);
+
+  // Keep refs in sync with current state/props
+  sessionIdRef.current = sessionId;
+  socketRef.current = socket;
+
   const isWindows = server.os?.distro === 'windows';
   const shellName = isWindows ? 'PowerShell' : 'Bash / Sh';
 
@@ -52,7 +61,8 @@ export default function ConsoleTerminal({ server }) {
 
   // Initialize terminal and connect session
   const startSession = () => {
-    if (!socket || !isSocketConnected) {
+    const activeSocket = socketRef.current || socket;
+    if (!activeSocket) {
       setConnectionStatus('error');
       setErrorMessage('WebSocket connection to AgentOps server is unavailable.');
       return;
@@ -66,12 +76,13 @@ export default function ConsoleTerminal({ server }) {
       xtermInstance.current.writeln('\x1b[38;5;39m=== Establishing Secure Shell Console Session ===\x1b[0m');
       xtermInstance.current.writeln(`\x1b[90mTarget: ${server.name} (${server.hostname}:${server.port || 22})\x1b[0m`);
       xtermInstance.current.writeln(`\x1b[90mShell: ${shellName} via Host-Verified OpenSSH\x1b[0m`);
+      xtermInstance.current.focus();
     }
 
     const cols = xtermInstance.current?.cols || 80;
     const rows = xtermInstance.current?.rows || 24;
 
-    socket.emit('console:start', {
+    activeSocket.emit('console:start', {
       serverId: server._id,
       cols,
       rows
@@ -80,14 +91,17 @@ export default function ConsoleTerminal({ server }) {
 
   // Disconnect session
   const disconnectSession = () => {
-    if (socket && sessionId) {
-      socket.emit('console:close', { sessionId });
+    const activeSessionId = sessionIdRef.current;
+    const activeSocket = socketRef.current;
+    if (activeSocket && activeSessionId) {
+      activeSocket.emit('console:close', { sessionId: activeSessionId });
     }
     if (xtermInstance.current) {
       xtermInstance.current.writeln('\r\n\x1b[33m[Session disconnected by user]\x1b[0m\r\n');
     }
     setConnectionStatus('disconnected');
     setSessionId(null);
+    sessionIdRef.current = null;
     setSessionStartTime(null);
   };
 
@@ -95,16 +109,27 @@ export default function ConsoleTerminal({ server }) {
   const clearTerminal = () => {
     if (xtermInstance.current) {
       xtermInstance.current.clear();
+      xtermInstance.current.focus();
     }
   };
 
-  // Setup xterm instance
+  // Copy selection or buffer
+  const copyTerminalSelection = () => {
+    if (!xtermInstance.current) return;
+    const selection = xtermInstance.current.getSelection();
+    if (selection) {
+      navigator.clipboard.writeText(selection);
+    }
+  };
+
+  // Setup xterm instance once on mount
   useEffect(() => {
     if (!terminalRef.current) return;
 
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: 'block',
+      convertEol: true,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
       fontSize: 13,
       lineHeight: 1.2,
@@ -135,18 +160,26 @@ export default function ConsoleTerminal({ server }) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(terminalRef.current);
-    fitAddon.fit();
+
+    setTimeout(() => {
+      try {
+        fitAddon.fit();
+      } catch (e) {}
+    }, 100);
 
     xtermInstance.current = term;
     fitAddonInstance.current = fitAddon;
 
     term.writeln('\x1b[38;5;39mAgentOps 2.0 Web Console\x1b[0m');
     term.writeln(`Click 'Connect Session' to launch an interactive remote terminal on ${server.name}.\r\n`);
+    term.focus();
 
-    // Handle input typed in terminal
+    // Handle input typed in terminal - accesses refs to prevent stale closure!
     const onDataDisposable = term.onData((data) => {
-      if (sessionId && socket) {
-        socket.emit('console:input', { sessionId, data });
+      const activeSessionId = sessionIdRef.current;
+      const activeSocket = socketRef.current;
+      if (activeSessionId && activeSocket) {
+        activeSocket.emit('console:input', { sessionId: activeSessionId, data });
       }
     });
 
@@ -154,9 +187,11 @@ export default function ConsoleTerminal({ server }) {
     const handleResize = () => {
       try {
         fitAddon.fit();
-        if (sessionId && socket && term.cols && term.rows) {
-          socket.emit('console:resize', {
-            sessionId,
+        const activeSessionId = sessionIdRef.current;
+        const activeSocket = socketRef.current;
+        if (activeSessionId && activeSocket && term.cols && term.rows) {
+          activeSocket.emit('console:resize', {
+            sessionId: activeSessionId,
             cols: term.cols,
             rows: term.rows
           });
@@ -166,8 +201,32 @@ export default function ConsoleTerminal({ server }) {
 
     window.addEventListener('resize', handleResize);
 
+    // Clipboard paste support into terminal
+    const handlePaste = (e) => {
+      const text = e.clipboardData?.getData('text');
+      const activeSessionId = sessionIdRef.current;
+      const activeSocket = socketRef.current;
+      if (text && activeSessionId && activeSocket) {
+        activeSocket.emit('console:input', { sessionId: activeSessionId, data: text });
+      }
+    };
+
+    const termContainer = terminalRef.current;
+    const handleContainerClick = () => {
+      term.focus();
+    };
+
+    if (termContainer) {
+      termContainer.addEventListener('paste', handlePaste);
+      termContainer.addEventListener('click', handleContainerClick);
+    }
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (termContainer) {
+        termContainer.removeEventListener('paste', handlePaste);
+        termContainer.removeEventListener('click', handleContainerClick);
+      }
       onDataDisposable.dispose();
       term.dispose();
       xtermInstance.current = null;
@@ -175,12 +234,21 @@ export default function ConsoleTerminal({ server }) {
     };
   }, []);
 
+  // Auto-connect once socket is ready
+  useEffect(() => {
+    if (isSocketConnected && socket && connectionStatus === 'disconnected' && !autoConnectedRef.current) {
+      autoConnectedRef.current = true;
+      startSession();
+    }
+  }, [isSocketConnected, socket]);
+
   // Socket event listeners for console
   useEffect(() => {
     if (!socket) return;
 
     const onConsoleReady = (data) => {
       setSessionId(data.sessionId);
+      sessionIdRef.current = data.sessionId;
       setConnectionStatus('connected');
       setSessionStartTime(Date.now());
       setErrorMessage('');
@@ -200,6 +268,7 @@ export default function ConsoleTerminal({ server }) {
     const onConsoleClosed = (data) => {
       setConnectionStatus('disconnected');
       setSessionId(null);
+      sessionIdRef.current = null;
       setSessionStartTime(null);
       if (xtermInstance.current) {
         xtermInstance.current.writeln(`\r\n\x1b[31m[Session terminated: ${data.reason || 'Closed by remote host'}]\x1b[0m\r\n`);
@@ -224,13 +293,19 @@ export default function ConsoleTerminal({ server }) {
       socket.off('console:output', onConsoleOutput);
       socket.off('console:closed', onConsoleClosed);
       socket.off('console:error', onConsoleError);
+    };
+  }, [socket]);
 
-      // Clean up session if component unmounts
-      if (sessionId) {
-        socket.emit('console:close', { sessionId });
+  // Cleanup active session only when component unmounts
+  useEffect(() => {
+    return () => {
+      const activeSessionId = sessionIdRef.current;
+      const activeSocket = socketRef.current;
+      if (activeSessionId && activeSocket) {
+        activeSocket.emit('console:close', { sessionId: activeSessionId });
       }
     };
-  }, [socket, sessionId]);
+  }, []);
 
   return (
     <div className="bg-dark-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-lg">
@@ -308,6 +383,15 @@ export default function ConsoleTerminal({ server }) {
 
           <button
             type="button"
+            onClick={copyTerminalSelection}
+            title="Copy Selection"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-dark-800 transition-colors"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            type="button"
             onClick={clearTerminal}
             title="Clear Terminal Screen"
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-dark-800 transition-colors"
@@ -328,7 +412,7 @@ export default function ConsoleTerminal({ server }) {
       {/* Terminal Viewport */}
       <div
         ref={terminalRef}
-        className="w-full h-[520px] p-2 bg-[#090d16] overflow-hidden"
+        className="w-full h-[520px] p-2 bg-[#090d16] overflow-hidden cursor-text"
       />
 
       {/* Terminal Security Notice Footer */}
