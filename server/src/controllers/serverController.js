@@ -31,7 +31,7 @@ exports.createServer = async (req, res, next) => {
       hostname,
       port = 22,
       osDistro = 'ubuntu',
-      monitoringMethod = 'ssh',
+      monitoringMethod,
       authMethod = 'key',
       username = 'agentops',
       privateKey,
@@ -40,6 +40,9 @@ exports.createServer = async (req, res, next) => {
       tags = [],
       monitoringInterval = 10
     } = req.body;
+
+    const resolvedPort = parseInt(port, 10) || (osDistro === 'windows' ? 3389 : 22);
+    const resolvedMonitoringMethod = monitoringMethod || (osDistro === 'windows' ? (resolvedPort === 22 ? 'ssh' : 'rdp') : 'ssh');
 
     // Encrypt sensitive credentials
     const credentials = {};
@@ -56,9 +59,12 @@ exports.createServer = async (req, res, next) => {
       tenantId: req.user.tenantId,
       name,
       hostname,
-      port,
-      os: { distro: osDistro },
-      monitoringMethod,
+      port: resolvedPort,
+      os: {
+        distro: osDistro,
+        distroName: osDistro === 'windows' ? 'Windows Server' : (osDistro === 'ubuntu' ? 'Ubuntu' : osDistro)
+      },
+      monitoringMethod: resolvedMonitoringMethod,
       authMethod,
       username,
       credentials,
@@ -139,6 +145,18 @@ exports.updateServer = async (req, res, next) => {
       server.hostname = hostname;
     }
     if (port !== undefined) server.port = port;
+    if (osDistro !== undefined) {
+      server.os = server.os || {};
+      server.os.distro = osDistro;
+      if (osDistro === 'windows') {
+        server.os.distroName = 'Windows Server';
+      }
+    }
+    if (updates.monitoringMethod !== undefined) {
+      server.monitoringMethod = updates.monitoringMethod;
+    } else if (server.os?.distro === 'windows') {
+      server.monitoringMethod = parseInt(server.port, 10) === 22 ? 'ssh' : 'rdp';
+    }
     if (tags !== undefined) server.tags = tags;
     if (monitoringInterval !== undefined) server.monitoringInterval = monitoringInterval;
     if (isMonitoringEnabled !== undefined) server.isMonitoringEnabled = isMonitoringEnabled;
@@ -227,6 +245,8 @@ exports.testArbitraryConnection = async (req, res, next) => {
     const {
       hostname,
       port = 22,
+      osDistro = 'ubuntu',
+      monitoringMethod,
       username = 'agentops',
       authMethod = 'key',
       privateKey,
@@ -234,9 +254,14 @@ exports.testArbitraryConnection = async (req, res, next) => {
       keyPassphrase
     } = req.body;
 
+    const resolvedPort = parseInt(port, 10) || (osDistro === 'windows' ? 3389 : 22);
+    const resolvedMonitoringMethod = monitoringMethod || (osDistro === 'windows' ? (resolvedPort === 22 ? 'ssh' : 'rdp') : 'ssh');
+
     const result = await testSshConnection({
       hostname,
-      port,
+      port: resolvedPort,
+      osDistro,
+      monitoringMethod: resolvedMonitoringMethod,
       username,
       authMethod,
       privateKey,
@@ -260,9 +285,14 @@ exports.testServerConnection = async (req, res, next) => {
     const server = await Server.findById(req.server._id)
       .select('+credentials.encryptedPrivateKey +credentials.encryptedPassword +credentials.keyPassphrase');
 
+    const resolvedPort = parseInt(server.port, 10) || (server.os?.distro === 'windows' ? 3389 : 22);
+    const resolvedMonitoringMethod = server.monitoringMethod || (server.os?.distro === 'windows' ? (resolvedPort === 22 ? 'ssh' : 'rdp') : 'ssh');
+
     const result = await testSshConnection({
       hostname: server.hostname,
-      port: server.port,
+      port: resolvedPort,
+      osDistro: server.os?.distro,
+      monitoringMethod: resolvedMonitoringMethod,
       username: server.username,
       authMethod: server.authMethod,
       encryptedPrivateKey: server.credentials?.encryptedPrivateKey,

@@ -171,6 +171,25 @@ async function createSshConnection(config, options = {}) {
  * Comprehensive Connection Test
  */
 async function testSshConnection(config) {
+  const isRdp = config.monitoringMethod === 'rdp' || parseInt(config.port, 10) === 3389;
+  if (isRdp) {
+    const { testRdpConnection } = require('./rdpService');
+    try {
+      const rdpRes = await testRdpConnection({
+        hostname: config.hostname,
+        port: config.port || 3389,
+        username: config.username
+      });
+      return rdpRes;
+    } catch (rdpErr) {
+      return {
+        success: false,
+        error: rdpErr.message,
+        message: `Windows connection test failed: ${rdpErr.message}`
+      };
+    }
+  }
+
   let connectionObj = null;
   try {
     const startTime = Date.now();

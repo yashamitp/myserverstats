@@ -18,16 +18,16 @@ const createServerSchema = z.object({
   hostname: z.string().min(1, 'Hostname or IP is required').max(255),
   port: z.number().int().min(1).max(65535).default(22),
   osDistro: z.enum(['ubuntu', 'debian', 'windows', 'other']).default('ubuntu'),
-  monitoringMethod: z.enum(['ssh', 'agent']).default('ssh'),
+  monitoringMethod: z.enum(['ssh', 'agent', 'rdp']).default('ssh'),
   authMethod: z.enum(['key', 'password']).default('key'),
-  username: z.string().min(1, 'SSH username is required').max(64).default('agentops'),
+  username: z.string().min(1, 'Username is required').max(64).default('agentops'),
   privateKey: z.string().max(16384).optional(),
   password: z.string().max(256).optional(),
   keyPassphrase: z.string().max(256).optional(),
   tags: z.array(z.string().max(50)).max(10).optional().default([]),
   monitoringInterval: z.number().int().min(5).max(300).default(10)
 }).refine((data) => {
-  if (data.monitoringMethod === 'ssh') {
+  if (data.monitoringMethod === 'ssh' || data.monitoringMethod === 'rdp') {
     if (data.authMethod === 'password') {
       return Boolean(data.password && data.password.trim().length > 0);
     }
@@ -46,6 +46,7 @@ const updateServerSchema = z.object({
   hostname: z.string().min(1).max(255).optional(),
   port: z.number().int().min(1).max(65535).optional(),
   osDistro: z.enum(['ubuntu', 'debian', 'windows', 'other']).optional(),
+  monitoringMethod: z.enum(['ssh', 'agent', 'rdp']).optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   monitoringInterval: z.number().int().min(5).max(300).optional(),
   isMonitoringEnabled: z.boolean().optional(),
@@ -60,6 +61,7 @@ const testConnectionSchema = z.object({
   hostname: z.string().min(1, 'Hostname or IP is required').max(255),
   port: z.number().int().min(1).max(65535).default(22),
   osDistro: z.enum(['ubuntu', 'debian', 'windows', 'other']).optional().default('ubuntu'),
+  monitoringMethod: z.enum(['ssh', 'agent', 'rdp']).optional(),
   username: z.string().min(1, 'Username is required').default('agentops'),
   authMethod: z.enum(['key', 'password']).default('key'),
   privateKey: z.string().optional(),

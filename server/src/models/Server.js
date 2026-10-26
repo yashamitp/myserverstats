@@ -37,7 +37,7 @@ const serverSchema = new mongoose.Schema({
   },
   monitoringMethod: {
     type: String,
-    enum: ['ssh', 'agent'],
+    enum: ['ssh', 'agent', 'rdp'],
     default: 'ssh'
   },
   authMethod: {

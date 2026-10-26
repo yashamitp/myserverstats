@@ -113,7 +113,7 @@ class MonitoringWorker {
     let sanitizedError = '';
 
     try {
-      const collector = getMonitoringCollector(server.monitoringMethod);
+      const collector = getMonitoringCollector(server.monitoringMethod, server);
       const snapshot = await collector.collectSnapshot(server);
 
       // Persist time-series metric document

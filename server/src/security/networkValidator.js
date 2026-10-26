@@ -94,6 +94,7 @@ function isRestrictedIPv6(ip, allowPrivate = false) {
  */
 async function validateDestination(host, port, options = {}) {
   const allowPrivate = options.allowPrivate !== undefined ? options.allowPrivate : env.ALLOW_PRIVATE_NETWORKS;
+  const allowLoopback = options.allowLoopback || false;
 
   if (!host || typeof host !== 'string') {
     return { valid: false, error: 'Target host is required' };
@@ -106,22 +107,26 @@ async function validateDestination(host, port, options = {}) {
     return { valid: false, error: 'Port must be an integer between 1 and 65535' };
   }
 
-  // Reject local hostnames
-  if (['localhost', 'localhost.localdomain', 'ip6-localhost', 'ip6-loopback'].includes(cleanHost.toLowerCase())) {
+  // Reject local hostnames unless allowLoopback is explicitly true
+  if (!allowLoopback && ['localhost', 'localhost.localdomain', 'ip6-localhost', 'ip6-loopback'].includes(cleanHost.toLowerCase())) {
     return { valid: false, error: 'Loopback target is prohibited' };
   }
 
   let resolvedIp = cleanHost;
 
   if (isIPv4(cleanHost)) {
-    const check = isRestrictedIPv4(cleanHost, allowPrivate);
-    if (check.restricted) {
-      return { valid: false, error: `Invalid destination: ${check.reason}` };
+    if (!allowLoopback || !cleanHost.startsWith('127.')) {
+      const check = isRestrictedIPv4(cleanHost, allowPrivate);
+      if (check.restricted) {
+        return { valid: false, error: `Invalid destination: ${check.reason}` };
+      }
     }
   } else if (isIPv6(cleanHost)) {
-    const check = isRestrictedIPv6(cleanHost, allowPrivate);
-    if (check.restricted) {
-      return { valid: false, error: `Invalid destination: ${check.reason}` };
+    if (!allowLoopback || cleanHost !== '::1') {
+      const check = isRestrictedIPv6(cleanHost, allowPrivate);
+      if (check.restricted) {
+        return { valid: false, error: `Invalid destination: ${check.reason}` };
+      }
     }
   } else {
     // Resolve hostname via DNS

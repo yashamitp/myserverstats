@@ -12,7 +12,8 @@ import {
   Terminal,
   Cpu,
   Clock,
-  HelpCircle
+  HelpCircle,
+  Monitor
 } from 'lucide-react';
 
 export default function AddServerPage() {
@@ -40,20 +41,43 @@ export default function AddServerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const isWindows = formData.osDistro === 'windows';
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
       const next = { ...prev, [name]: value };
       if (name === 'osDistro') {
-        if (value === 'windows' && (prev.username === 'agentops' || !prev.username)) {
-          next.username = 'Administrator';
+        if (value === 'windows') {
+          // Switch to Windows RDP defaults
+          if (prev.port === 22 || !prev.port) {
+            next.port = 3389;
+          }
+          if (prev.username === 'agentops' || prev.username === 'ubuntu' || !prev.username) {
+            next.username = 'Administrator';
+          }
           next.authMethod = 'password';
-        } else if (value !== 'windows' && prev.username === 'Administrator') {
-          next.username = 'ubuntu';
+          next.monitoringMethod = parseInt(next.port, 10) === 22 ? 'ssh' : 'rdp';
+        } else {
+          // Switch back to Linux defaults
+          if (prev.port === 3389) {
+            next.port = 22;
+          }
+          if (prev.username === 'Administrator') {
+            next.username = 'ubuntu';
+          }
+          next.monitoringMethod = 'ssh';
+        }
+      }
+      if (name === 'port') {
+        const portNum = parseInt(value, 10);
+        if (next.osDistro === 'windows') {
+          next.monitoringMethod = portNum === 22 ? 'ssh' : 'rdp';
         }
       }
       return next;
     });
+
     // Reset test result if connection params change
     if (['hostname', 'port', 'username', 'privateKey', 'password', 'osDistro'].includes(name)) {
       setTestResult(null);
@@ -66,11 +90,16 @@ export default function AddServerPage() {
     setTestResult(null);
 
     try {
+      const portNum = parseInt(formData.port, 10) || (formData.osDistro === 'windows' ? 3389 : 22);
+      const isWin = formData.osDistro === 'windows';
+      const monitoringMethod = isWin ? (portNum === 22 ? 'ssh' : 'rdp') : formData.monitoringMethod;
+
       const res = await api.testPreflightConnection({
-        hostname: formData.hostname,
-        port: parseInt(formData.port, 10) || 22,
+        hostname: formData.hostname.trim(),
+        port: portNum,
         osDistro: formData.osDistro,
-        username: formData.username,
+        monitoringMethod,
+        username: formData.username.trim(),
         authMethod: formData.authMethod,
         privateKey: formData.authMethod === 'key' ? formData.privateKey : undefined,
         password: formData.authMethod === 'password' ? formData.password : undefined,
@@ -85,7 +114,8 @@ export default function AddServerPage() {
       setErrorMsg(msg);
       setTestResult({
         success: false,
-        error: msg
+        error: msg,
+        message: msg
       });
     } finally {
       setIsTesting(false);
@@ -103,14 +133,18 @@ export default function AddServerPage() {
         .map((t) => t.trim())
         .filter(Boolean);
 
+      const port = parseInt(formData.port, 10) || (formData.osDistro === 'windows' ? 3389 : 22);
+      const isWin = formData.osDistro === 'windows';
+      const monitoringMethod = isWin ? (port === 22 ? 'ssh' : 'rdp') : formData.monitoringMethod || 'ssh';
+
       const payload = {
-        name: formData.name,
-        hostname: formData.hostname,
-        port: parseInt(formData.port, 10) || 22,
+        name: formData.name.trim(),
+        hostname: formData.hostname.trim(),
+        port,
         osDistro: formData.osDistro,
-        monitoringMethod: formData.monitoringMethod,
+        monitoringMethod,
         authMethod: formData.authMethod,
-        username: formData.username,
+        username: formData.username.trim(),
         tags,
         monitoringInterval: parseInt(formData.monitoringInterval, 10) || 10
       };
@@ -138,9 +172,13 @@ export default function AddServerPage() {
     <div className="max-w-3xl mx-auto py-2">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-white tracking-tight">Connect Remote Linux Server</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">
+          {isWindows ? 'Connect Remote Windows Server' : 'Connect Remote Server'}
+        </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Configure secure SSH-based monitoring for your Ubuntu or Debian VPS instance.
+          {isWindows
+            ? 'Add and monitor your Windows Server or Windows VM using standard Remote Desktop (RDP: 3389) or OpenSSH.'
+            : 'Configure secure infrastructure monitoring for your Ubuntu, Debian, or Linux VPS instance.'}
         </p>
       </div>
 
@@ -173,7 +211,7 @@ export default function AddServerPage() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="e.g. Production Web VPS"
+                placeholder={isWindows ? 'e.g. Production Windows Server' : 'e.g. Production Web VPS'}
                 className="w-full px-3 py-2 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
               />
             </div>
@@ -190,18 +228,18 @@ export default function AddServerPage() {
               >
                 <option value="ubuntu">Ubuntu Linux (20.04 / 22.04 / 24.04)</option>
                 <option value="debian">Debian GNU/Linux (11 / 12)</option>
-                <option value="windows">Windows Server / Windows 10/11 (OpenSSH)</option>
+                <option value="windows">Windows Server / Windows 10/11 (RDP: 3389)</option>
                 <option value="other">Other Distribution</option>
               </select>
             </div>
 
-            {formData.osDistro === 'windows' && (
+            {isWindows && (
               <div className="sm:col-span-2 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <Monitor className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <span className="font-semibold block">Windows VM Remote Login:</span>
+                  <span className="font-semibold block">Windows Server / Remote Desktop (RDP) Login:</span>
                   <p className="text-[11px] text-blue-300/90 leading-relaxed">
-                    Connects securely via native Windows OpenSSH. Ensure OpenSSH Server is enabled (<code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Start-Service sshd</code>). You can log in using Windows account credentials (e.g. <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Administrator</code> or <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">.\username</code>) via Password or SSH Key.
+                    Connects using standard Windows login credentials (just like Microsoft Remote Desktop Connection). The default port is set to <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">3389</code> (standard for RDP). You can customize the port if your Windows VM uses a custom port or gateway.
                   </p>
                 </div>
               </div>
@@ -217,14 +255,14 @@ export default function AddServerPage() {
                 name="hostname"
                 value={formData.hostname}
                 onChange={handleChange}
-                placeholder="203.0.113.10 or vps.example.com"
+                placeholder="203.0.113.10 or win.example.com"
                 className="w-full px-3 py-2 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-brand-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                SSH Port
+                {isWindows ? 'Port (Default RDP: 3389)' : 'SSH Port'} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="number"
@@ -233,6 +271,7 @@ export default function AddServerPage() {
                 onChange={handleChange}
                 min={1}
                 max={65535}
+                placeholder={isWindows ? '3389' : '22'}
                 className="w-full px-3 py-2 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-brand-500"
               />
             </div>
@@ -247,13 +286,13 @@ export default function AddServerPage() {
               name="tagsString"
               value={formData.tagsString}
               onChange={handleChange}
-              placeholder="production, web, eu-west"
+              placeholder="production, windows, cloud"
               className="w-full px-3 py-2 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white font-mono placeholder-slate-500 focus:outline-none focus:border-brand-500"
             />
           </div>
         </div>
 
-        {/* Step 2 & 3: Connection & Authentication */}
+        {/* Step 2: Authentication */}
         <div className="bg-dark-850 border border-slate-800/80 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
             <Key className="w-4 h-4 text-accent-cyan" />
@@ -265,30 +304,32 @@ export default function AddServerPage() {
               <input
                 type="radio"
                 name="authMethod"
-                value="key"
-                checked={formData.authMethod === 'key'}
+                value="password"
+                checked={formData.authMethod === 'password'}
                 onChange={handleChange}
                 className="text-brand-500 focus:ring-0"
               />
-              <span className="text-slate-200 font-medium">SSH Private Key (Recommended)</span>
+              <span className="text-slate-200 font-medium">
+                {isWindows ? 'Password Authentication (Recommended for Windows)' : 'Password Authentication'}
+              </span>
             </label>
 
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="radio"
                 name="authMethod"
-                value="password"
-                checked={formData.authMethod === 'password'}
+                value="key"
+                checked={formData.authMethod === 'key'}
                 onChange={handleChange}
                 className="text-brand-500 focus:ring-0"
               />
-              <span className="text-slate-200 font-medium">Password Authentication</span>
+              <span className="text-slate-200 font-medium">SSH Private Key</span>
             </label>
           </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1">
-              SSH Username <span className="text-rose-400">*</span>
+              {isWindows ? 'Windows Username' : 'SSH Username'} <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -296,7 +337,7 @@ export default function AddServerPage() {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              placeholder="agentops or root"
+              placeholder={isWindows ? 'Administrator or your Windows user' : 'agentops or ubuntu'}
               className="w-full sm:w-1/2 px-3 py-2 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-brand-500"
             />
           </div>
@@ -321,9 +362,12 @@ export default function AddServerPage() {
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                SSH Password <span className="text-rose-400">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-300">
+                  {isWindows ? 'Windows User Password' : 'SSH Password'} <span className="text-rose-400">*</span>
+                </label>
+                <span className="text-[10px] text-slate-400 font-mono">Encrypted with AES-256-GCM</span>
+              </div>
               <input
                 type="password"
                 required
@@ -339,7 +383,7 @@ export default function AddServerPage() {
           <div className="p-3 bg-dark-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <span>
-              Credentials are never stored in plaintext and never logged. You can create a restricted monitoring user on Ubuntu with: <code className="text-slate-300 font-mono">sudo adduser --disabled-password agentops</code>
+              Credentials are encrypted at rest using AES-256-GCM and never logged or exposed in plaintext.
             </span>
           </div>
         </div>
@@ -396,16 +440,16 @@ export default function AddServerPage() {
                     <span className="text-emerald-400">{testResult.latencyMs} ms</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Host Key: </span>
-                    <span className="truncate block">{testResult.hostKeyFingerprint}</span>
+                    <span className="text-slate-500">Protocol: </span>
+                    <span className="uppercase text-brand-400">{testResult.protocol || 'SSH'}</span>
                   </div>
                   <div>
                     <span className="text-slate-500">Detected OS: </span>
                     <span>{testResult.os?.distroName || testResult.os?.distro}</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Kernel: </span>
-                    <span>{testResult.os?.kernel || 'Unknown'}</span>
+                    <span className="text-slate-500">Endpoint: </span>
+                    <span>{testResult.os?.kernel || 'Port Active'}</span>
                   </div>
                 </div>
               )}

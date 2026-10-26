@@ -59,10 +59,23 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      if (name === 'osDistro') {
+        if (value === 'windows') {
+          if (prev.port === 22 || !prev.port) next.port = 3389;
+          if (prev.username === 'agentops' || prev.username === 'ubuntu' || !prev.username) next.username = 'Administrator';
+          next.authMethod = 'password';
+        } else {
+          if (prev.port === 3389) next.port = 22;
+          if (prev.username === 'Administrator') next.username = 'ubuntu';
+        }
+      }
+      return next;
+    });
   };
 
   const handleTestConnection = async () => {
@@ -71,10 +84,13 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
     setTestResult(null);
 
     try {
+      const isWin = formData.osDistro === 'windows';
+      const portNum = parseInt(formData.port, 10) || (isWin ? 3389 : 22);
       const payload = {
         hostname: formData.hostname,
-        port: parseInt(formData.port, 10) || 22,
+        port: portNum,
         osDistro: formData.osDistro,
+        monitoringMethod: isWin ? (portNum === 22 ? 'ssh' : 'rdp') : 'ssh',
         username: formData.username,
         authMethod: formData.authMethod
       };
@@ -117,11 +133,15 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
         .map((t) => t.trim())
         .filter(Boolean);
 
+      const isWin = formData.osDistro === 'windows';
+      const port = parseInt(formData.port, 10) || (isWin ? 3389 : 22);
+
       const updatePayload = {
         name: formData.name,
         hostname: formData.hostname,
-        port: parseInt(formData.port, 10) || 22,
+        port,
         osDistro: formData.osDistro,
+        monitoringMethod: isWin ? (port === 22 ? 'ssh' : 'rdp') : 'ssh',
         username: formData.username,
         authMethod: formData.authMethod,
         tags,
@@ -236,16 +256,16 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
               >
                 <option value="ubuntu">Ubuntu Linux (20.04 / 22.04 / 24.04)</option>
                 <option value="debian">Debian GNU/Linux (11 / 12)</option>
-                <option value="windows">Windows Server / Windows 10/11 (OpenSSH)</option>
+                <option value="windows">Windows Server / Windows 10/11 (RDP: 3389)</option>
                 <option value="other">Other Distribution</option>
               </select>
             </div>
 
             {formData.osDistro === 'windows' && (
               <div className="sm:col-span-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
-                <span className="font-semibold block mb-0.5">Windows VM OpenSSH:</span>
+                <span className="font-semibold block mb-0.5">Windows Remote Desktop (RDP) Login:</span>
                 <p className="text-[11px] text-blue-300/90 leading-relaxed">
-                  Ensure Windows OpenSSH Server is active (<code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Start-Service sshd</code>). You can log in using Windows account credentials (e.g. <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Administrator</code>).
+                  Default connection port is <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">3389</code> (Remote Desktop / RDP). Enter your Windows credentials (e.g. <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Administrator</code> and password). You can change the port if your server uses custom port forwarding.
                 </p>
               </div>
             )}
@@ -263,7 +283,9 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">SSH Port</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                {formData.osDistro === 'windows' ? 'Port (Default RDP: 3389)' : 'SSH Port'}
+              </label>
               <input
                 type="number"
                 name="port"
@@ -277,7 +299,9 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-slate-300 mb-1">SSH Username</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                {formData.osDistro === 'windows' ? 'Windows Username' : 'SSH Username'}
+              </label>
               <input
                 type="text"
                 name="username"
