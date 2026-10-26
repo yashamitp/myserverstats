@@ -345,6 +345,212 @@ function parseLogs(rawText) {
   return logs;
 }
 
+function parseWindowsOS(rawText) {
+  const result = {
+    distro: 'windows',
+    distroName: 'Windows Server',
+    version: '',
+    kernel: 'NT',
+    arch: 'x86_64'
+  };
+
+  if (!rawText) return result;
+  const cleanText = rawText.replace(/#< CLIXML[\s\S]*?<\/Objs>/g, '').trim();
+  const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  
+  if (lines.length > 0) {
+    const firstLine = lines.find(l => l.toLowerCase().includes('windows')) || lines[0];
+    result.distroName = firstLine.replace('===OS===', '').trim() || 'Windows';
+  }
+  
+  const versionLine = lines.find(l => /^[0-9]+\.[0-9]+(?:\.[0-9]+)?/.test(l));
+  if (versionLine) {
+    result.version = versionLine;
+    result.kernel = `NT ${versionLine.split('.').slice(0, 2).join('.')}`;
+  }
+  
+  const archLine = lines.find(l => l.toLowerCase().includes('64') || l.toLowerCase().includes('32'));
+  if (archLine) {
+    result.arch = archLine.includes('64') ? 'x86_64' : 'x86';
+  }
+  
+  return result;
+}
+
+function parseWindowsSnapshot(rawText) {
+  const cleanText = (rawText || '').replace(/#< CLIXML[\s\S]*?<\/Objs>/g, '');
+  const sections = {};
+  const markers = ['===OS===', '===UPTIME===', '===MEMINFO===', '===CPU===', '===CPUINFO===', '===DF==='];
+
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i];
+    const nextMarker = markers[i + 1];
+    const startIdx = cleanText.indexOf(marker);
+    if (startIdx !== -1) {
+      const contentStart = startIdx + marker.length;
+      const endIdx = nextMarker ? cleanText.indexOf(nextMarker, contentStart) : cleanText.length;
+      sections[marker] = cleanText.slice(contentStart, endIdx !== -1 ? endIdx : undefined).trim();
+    }
+  }
+
+  const os = parseWindowsOS(sections['===OS===']);
+  const uptimeSec = parseInt(sections['===UPTIME==='], 10) || 0;
+  const uptime = {
+    seconds: uptimeSec,
+    bootTime: new Date(Date.now() - uptimeSec * 1000)
+  };
+
+  // Memory
+  let totalKB = 0;
+  let freeKB = 0;
+  if (sections['===MEMINFO===']) {
+    const tMatch = sections['===MEMINFO==='].match(/TotalKB:\s*([0-9]+)/i);
+    const fMatch = sections['===MEMINFO==='].match(/FreeKB:\s*([0-9]+)/i);
+    if (tMatch) totalKB = parseInt(tMatch[1], 10);
+    if (fMatch) freeKB = parseInt(fMatch[1], 10);
+  }
+  const totalBytes = totalKB * 1024;
+  const freeBytes = freeKB * 1024;
+  const usedBytes = Math.max(0, totalBytes - freeBytes);
+  const memUsagePercent = totalBytes > 0 ? parseFloat(((usedBytes / totalBytes) * 100).toFixed(1)) : 0;
+
+  const memory = {
+    totalBytes,
+    usedBytes,
+    freeBytes,
+    availableBytes: freeBytes,
+    usagePercent: memUsagePercent
+  };
+
+  // CPU
+  const cpuPercent = parseFloat(sections['===CPU===']) || 0;
+  const coreCount = parseInt(sections['===CPUINFO==='], 10) || 1;
+  const cpu = {
+    usagePercent: cpuPercent,
+    coreCount,
+    loadAvg: [cpuPercent, cpuPercent, cpuPercent]
+  };
+
+  // Disk
+  const disk = [];
+  if (sections['===DF===']) {
+    const dLines = sections['===DF==='].split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    for (const dl of dLines) {
+      const parts = dl.split(/\s+/);
+      if (parts.length >= 3) {
+        const drive = parts[0];
+        const sizeBytes = parseInt(parts[1], 10) || 0;
+        const freeB = parseInt(parts[2], 10) || 0;
+        const usedB = Math.max(0, sizeBytes - freeB);
+        const usage = sizeBytes > 0 ? parseFloat(((usedB / sizeBytes) * 100).toFixed(1)) : 0;
+        disk.push({
+          filesystem: drive,
+          mount: drive,
+          totalBytes: sizeBytes,
+          usedBytes: usedB,
+          freeBytes: freeB,
+          usagePercent: usage
+        });
+      }
+    }
+  }
+
+  return {
+    success: true,
+    os,
+    uptime,
+    cpu,
+    memory,
+    disk,
+    network: [{ interface: 'Ethernet', rxBytes: 0, txBytes: 0, rxRateBytesPerSec: 0, txRateBytesPerSec: 0 }],
+    timestamp: new Date()
+  };
+}
+
+function parseWindowsProcesses(rawText) {
+  const processes = [];
+  if (!rawText) return processes;
+  const cleanText = rawText.replace(/#< CLIXML[\s\S]*?<\/Objs>/g, '');
+  const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const parts = line.split(/\s+/);
+    if (parts.length >= 4) {
+      const pid = parseInt(parts[0], 10);
+      const name = parts[1];
+      const cpu = parseFloat(parts[2]) || 0;
+      const memMB = parseFloat(parts[3]) || 0;
+      if (!isNaN(pid)) {
+        processes.push({
+          pid,
+          user: 'SYSTEM',
+          cpuPercent: cpu,
+          memPercent: 0,
+          command: name,
+          memoryMb: memMB
+        });
+      }
+    }
+  }
+  return processes;
+}
+
+function parseWindowsServices(rawText) {
+  const services = [];
+  if (!rawText) return services;
+  const cleanText = rawText.replace(/#< CLIXML[\s\S]*?<\/Objs>/g, '');
+  const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const parts = line.split('|');
+    if (parts.length >= 4) {
+      const name = parts[0].trim();
+      const status = parts[1].trim();
+      const startType = parts[2].trim();
+      const displayName = parts[3].trim();
+      const isActive = status.toLowerCase() === 'running';
+
+      services.push({
+        name,
+        load: startType.toLowerCase(),
+        active: isActive ? 'active' : 'inactive',
+        sub: status.toLowerCase(),
+        description: displayName || name
+      });
+    }
+  }
+  return services;
+}
+
+function parseWindowsLogs(rawText) {
+  const logs = [];
+  if (!rawText) return logs;
+  const cleanText = rawText.replace(/#< CLIXML[\s\S]*?<\/Objs>/g, '');
+  const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const match = line.match(/^([0-9T\:\-]+)\s+\[([^\]]+)\]\s+(.*)$/);
+    if (match) {
+      logs.push({
+        timestamp: match[1],
+        host: 'Windows',
+        process: match[2],
+        message: match[3],
+        raw: line
+      });
+    } else {
+      logs.push({
+        timestamp: new Date().toISOString(),
+        host: 'Windows',
+        process: 'System',
+        message: line,
+        raw: line
+      });
+    }
+  }
+  return logs;
+}
+
 module.exports = {
   parseOS,
   parseUptime,
@@ -354,5 +560,10 @@ module.exports = {
   parseNetDev,
   parseProcesses,
   parseServices,
-  parseLogs
+  parseLogs,
+  parseWindowsOS,
+  parseWindowsSnapshot,
+  parseWindowsProcesses,
+  parseWindowsServices,
+  parseWindowsLogs
 };

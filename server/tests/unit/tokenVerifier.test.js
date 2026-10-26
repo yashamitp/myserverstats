@@ -48,7 +48,7 @@ describe('Cryptographic Authentication & Token Verification', () => {
       const expiredToken = jwt.sign(
         { id: 'user_123', email: 'user@example.com' },
         localSecret,
-        { expiresIn: '-1s' }
+        { expiresIn: '-120s' }
       );
 
       await expect(
@@ -132,7 +132,7 @@ describe('Cryptographic Authentication & Token Verification', () => {
       const expiredClerkToken = jwt.sign(
         { sub: 'user_expired', iss: `https://${testClerkDomain}` },
         rsaPrivateKey,
-        { algorithm: 'RS256', expiresIn: '-1s' }
+        { algorithm: 'RS256', expiresIn: '-120s' }
       );
 
       await expect(

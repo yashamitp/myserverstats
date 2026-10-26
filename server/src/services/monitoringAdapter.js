@@ -5,15 +5,22 @@ const logger = require('../config/logger');
 
 class SshMonitoringCollector {
   /**
-   * Collect real-time metrics snapshot from Linux host over SSH
+   * Collect real-time metrics snapshot from Linux or Windows host over SSH
    */
   async collectSnapshot(server) {
     let conn = null;
     try {
+      const isWindows = server.os?.distro === 'windows';
       const { conn: activeConn } = await createSshConnection(server);
       conn = activeConn;
 
-      // Execute combined snapshot command
+      if (isWindows) {
+        const res = await execCommand(conn, commands.WINDOWS_COLLECT_SYSTEM_SNAPSHOT, 9000);
+        conn.end();
+        return parsers.parseWindowsSnapshot(res.stdout);
+      }
+
+      // Execute combined Linux snapshot command
       const res = await execCommand(conn, commands.COLLECT_SYSTEM_SNAPSHOT, 7000);
       conn.end();
 
@@ -86,11 +93,13 @@ class SshMonitoringCollector {
   async getProcesses(server) {
     let conn = null;
     try {
+      const isWindows = server.os?.distro === 'windows';
       const { conn: activeConn } = await createSshConnection(server);
       conn = activeConn;
-      const res = await execCommand(conn, commands.GET_PROCESSES, 5000);
+      const cmd = isWindows ? commands.WINDOWS_GET_PROCESSES : commands.GET_PROCESSES;
+      const res = await execCommand(conn, cmd, 6000);
       conn.end();
-      return parsers.parseProcesses(res.stdout);
+      return isWindows ? parsers.parseWindowsProcesses(res.stdout) : parsers.parseProcesses(res.stdout);
     } catch (err) {
       if (conn) conn.end();
       throw err;
@@ -100,11 +109,13 @@ class SshMonitoringCollector {
   async getServices(server) {
     let conn = null;
     try {
+      const isWindows = server.os?.distro === 'windows';
       const { conn: activeConn } = await createSshConnection(server);
       conn = activeConn;
-      const res = await execCommand(conn, commands.GET_SERVICES, 5000);
+      const cmd = isWindows ? commands.WINDOWS_GET_SERVICES : commands.GET_SERVICES;
+      const res = await execCommand(conn, cmd, 6000);
       conn.end();
-      return parsers.parseServices(res.stdout);
+      return isWindows ? parsers.parseWindowsServices(res.stdout) : parsers.parseServices(res.stdout);
     } catch (err) {
       if (conn) conn.end();
       throw err;
@@ -114,12 +125,13 @@ class SshMonitoringCollector {
   async getLogs(server, options = {}) {
     let conn = null;
     try {
+      const isWindows = server.os?.distro === 'windows';
       const { conn: activeConn } = await createSshConnection(server);
       conn = activeConn;
-      const cmd = commands.buildLogsCommand(options);
+      const cmd = isWindows ? commands.buildWindowsLogsCommand(options) : commands.buildLogsCommand(options);
       const res = await execCommand(conn, cmd, 6000);
       conn.end();
-      return parsers.parseLogs(res.stdout);
+      return isWindows ? parsers.parseWindowsLogs(res.stdout) : parsers.parseLogs(res.stdout);
     } catch (err) {
       if (conn) conn.end();
       throw err;

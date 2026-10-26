@@ -178,13 +178,35 @@ async function testSshConnection(config) {
     const { conn, hostKeyFingerprint } = connectionObj;
 
     // Verify basic read-only monitoring probe
-    const { TEST_PROBE } = require('../monitoring/commands');
-    const { parseOS } = require('../monitoring/parsers');
+    const { TEST_PROBE, WINDOWS_TEST_PROBE } = require('../monitoring/commands');
+    const { parseOS, parseWindowsOS } = require('../monitoring/parsers');
 
-    const probeResult = await execCommand(conn, TEST_PROBE, 5000);
+    const isWindows = config.osDistro === 'windows' || config.os?.distro === 'windows';
+    let parsedOS = null;
+    const probeCommand = isWindows ? WINDOWS_TEST_PROBE : TEST_PROBE;
+
+    const probeResult = await execCommand(conn, probeCommand, 6000);
     const latencyMs = Date.now() - startTime;
 
-    const parsedOS = parseOS(probeResult.stdout);
+    if (isWindows) {
+      parsedOS = parseWindowsOS(probeResult.stdout);
+    } else {
+      // Auto-detect if host turns out to be Windows OpenSSH
+      const isWinOutput = (probeResult.stderr && probeResult.stderr.includes('uname')) ||
+                          (probeResult.stdout && probeResult.stdout.includes('Windows')) ||
+                          (!probeResult.stdout && probeResult.code !== 0);
+      if (isWinOutput) {
+        try {
+          const winResult = await execCommand(conn, WINDOWS_TEST_PROBE, 6000);
+          if (winResult.stdout.includes('Windows') || winResult.stdout.includes('===OS===')) {
+            parsedOS = parseWindowsOS(winResult.stdout);
+          }
+        } catch (_) {}
+      }
+      if (!parsedOS) {
+        parsedOS = parseOS(probeResult.stdout);
+      }
+    }
 
     conn.end();
 

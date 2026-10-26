@@ -115,6 +115,7 @@ exports.updateServer = async (req, res, next) => {
       name,
       hostname,
       port,
+      osDistro,
       tags,
       monitoringInterval,
       isMonitoringEnabled,
@@ -126,6 +127,10 @@ exports.updateServer = async (req, res, next) => {
     } = req.body;
 
     if (name !== undefined) server.name = name;
+    if (osDistro !== undefined) {
+      if (!server.os) server.os = {};
+      server.os.distro = osDistro;
+    }
     if (hostname !== undefined) {
       const netCheck = await validateDestination(hostname, port || server.port || 22);
       if (!netCheck.valid) {

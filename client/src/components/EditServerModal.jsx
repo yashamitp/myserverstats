@@ -21,6 +21,7 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
     name: server.name || '',
     hostname: server.hostname || '',
     port: server.port || 22,
+    osDistro: server.os?.distro || 'ubuntu',
     username: server.username || '',
     authMethod: server.authMethod || 'key',
     password: '',
@@ -42,6 +43,7 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
       name: server.name || '',
       hostname: server.hostname || '',
       port: server.port || 22,
+      osDistro: server.os?.distro || 'ubuntu',
       username: server.username || '',
       authMethod: server.authMethod || 'key',
       password: '',
@@ -72,6 +74,7 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
       const payload = {
         hostname: formData.hostname,
         port: parseInt(formData.port, 10) || 22,
+        osDistro: formData.osDistro,
         username: formData.username,
         authMethod: formData.authMethod
       };
@@ -118,6 +121,7 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
         name: formData.name,
         hostname: formData.hostname,
         port: parseInt(formData.port, 10) || 22,
+        osDistro: formData.osDistro,
         username: formData.username,
         authMethod: formData.authMethod,
         tags,
@@ -223,6 +227,30 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
             </div>
 
             <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Operating System</label>
+              <select
+                name="osDistro"
+                value={formData.osDistro}
+                onChange={handleChange}
+                className="w-full px-3 py-2 bg-dark-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-brand-500"
+              >
+                <option value="ubuntu">Ubuntu Linux (20.04 / 22.04 / 24.04)</option>
+                <option value="debian">Debian GNU/Linux (11 / 12)</option>
+                <option value="windows">Windows Server / Windows 10/11 (OpenSSH)</option>
+                <option value="other">Other Distribution</option>
+              </select>
+            </div>
+
+            {formData.osDistro === 'windows' && (
+              <div className="sm:col-span-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
+                <span className="font-semibold block mb-0.5">Windows VM OpenSSH:</span>
+                <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                  Ensure Windows OpenSSH Server is active (<code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Start-Service sshd</code>). You can log in using Windows account credentials (e.g. <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Administrator</code>).
+                </p>
+              </div>
+            )}
+
+            <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">Hostname or IP Address</label>
               <input
                 type="text"
@@ -248,7 +276,7 @@ export default function EditServerModal({ server, isOpen, onClose, onUpdated }) 
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-slate-300 mb-1">SSH Username</label>
               <input
                 type="text"

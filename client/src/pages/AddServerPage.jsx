@@ -42,9 +42,20 @@ export default function AddServerPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'osDistro') {
+        if (value === 'windows' && (prev.username === 'agentops' || !prev.username)) {
+          next.username = 'Administrator';
+          next.authMethod = 'password';
+        } else if (value !== 'windows' && prev.username === 'Administrator') {
+          next.username = 'ubuntu';
+        }
+      }
+      return next;
+    });
     // Reset test result if connection params change
-    if (['hostname', 'port', 'username', 'privateKey', 'password'].includes(name)) {
+    if (['hostname', 'port', 'username', 'privateKey', 'password', 'osDistro'].includes(name)) {
       setTestResult(null);
     }
   };
@@ -58,6 +69,7 @@ export default function AddServerPage() {
       const res = await api.testPreflightConnection({
         hostname: formData.hostname,
         port: parseInt(formData.port, 10) || 22,
+        osDistro: formData.osDistro,
         username: formData.username,
         authMethod: formData.authMethod,
         privateKey: formData.authMethod === 'key' ? formData.privateKey : undefined,
@@ -178,9 +190,22 @@ export default function AddServerPage() {
               >
                 <option value="ubuntu">Ubuntu Linux (20.04 / 22.04 / 24.04)</option>
                 <option value="debian">Debian GNU/Linux (11 / 12)</option>
-                <option value="other">Other Linux Distribution</option>
+                <option value="windows">Windows Server / Windows 10/11 (OpenSSH)</option>
+                <option value="other">Other Distribution</option>
               </select>
             </div>
+
+            {formData.osDistro === 'windows' && (
+              <div className="sm:col-span-2 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-semibold block">Windows VM Remote Login:</span>
+                  <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                    Connects securely via native Windows OpenSSH. Ensure OpenSSH Server is enabled (<code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Start-Service sshd</code>). You can log in using Windows account credentials (e.g. <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">Administrator</code> or <code className="bg-dark-900 px-1 py-0.5 rounded text-white font-mono">.\username</code>) via Password or SSH Key.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">

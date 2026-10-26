@@ -7,7 +7,12 @@ const {
   parseNetDev,
   parseProcesses,
   parseServices,
-  parseLogs
+  parseLogs,
+  parseWindowsOS,
+  parseWindowsSnapshot,
+  parseWindowsProcesses,
+  parseWindowsServices,
+  parseWindowsLogs
 } = require('../../src/monitoring/parsers');
 
 describe('Linux Metrics Parsers', () => {
@@ -172,6 +177,115 @@ failed-job.service loaded failed failed Failed background worker`;
       expect(logs[0].host).toBe('web-server-1');
       expect(logs[0].process).toBe('systemd[1]');
       expect(logs[0].message).toBe('Started Nginx service.');
+    });
+  });
+});
+
+describe('Windows Metrics Parsers', () => {
+  describe('parseWindowsOS', () => {
+    it('should parse Windows OS caption and version correctly', () => {
+      const sample = `Microsoft Windows Server 2022 Datacenter
+10.0.20348
+64-bit`;
+      const os = parseWindowsOS(sample);
+      expect(os.distro).toBe('windows');
+      expect(os.distroName).toBe('Microsoft Windows Server 2022 Datacenter');
+      expect(os.version).toBe('10.0.20348');
+      expect(os.kernel).toBe('NT 10.0');
+      expect(os.arch).toBe('x86_64');
+    });
+
+    it('should strip CLIXML noise and handle empty gracefully', () => {
+      const sample = `#< CLIXML
+<Objs Version="1.1.0.1" xmlns="http://schemas.microsoft.com/powershell/2004/04"><Obj S="progress" RefId="0"><TNRef RefId="0" /><MS><I64 N="SourceId">1</I64><PR N="Record"><AV>Preparing...</AV></PR></MS></Obj></Objs>
+Windows 11 Pro
+10.0.22631
+64-bit`;
+      const os = parseWindowsOS(sample);
+      expect(os.distro).toBe('windows');
+      expect(os.distroName).toBe('Windows 11 Pro');
+      expect(os.version).toBe('10.0.22631');
+    });
+  });
+
+  describe('parseWindowsSnapshot', () => {
+    it('should parse composite snapshot into structured system metrics', () => {
+      const sample = `===OS===
+Microsoft Windows Server 2022
+10.0.20348
+64-bit
+===UPTIME===
+86400
+===MEMINFO===
+TotalKB: 16777216
+FreeKB: 8388608
+===CPU===
+18.5
+===CPUINFO===
+4
+===DF===
+C: 107374182400 53687091200
+D: 214748364800 107374182400`;
+
+      const snap = parseWindowsSnapshot(sample);
+      expect(snap.os.distro).toBe('windows');
+      expect(snap.uptime.seconds).toBe(86400);
+      expect(snap.memory.totalBytes).toBe(16777216 * 1024);
+      expect(snap.memory.freeBytes).toBe(8388608 * 1024);
+      expect(snap.memory.usagePercent).toBe(50.0);
+      expect(snap.cpu.usagePercent).toBe(18.5);
+      expect(snap.cpu.coreCount).toBe(4);
+      expect(snap.disk).toHaveLength(2);
+      expect(snap.disk[0].mount).toBe('C:');
+      expect(snap.disk[0].usagePercent).toBe(50.0);
+      expect(snap.disk[1].mount).toBe('D:');
+      expect(snap.disk[1].usagePercent).toBe(50.0);
+    });
+  });
+
+  describe('parseWindowsProcesses', () => {
+    it('should parse tab-delimited or pipe-delimited Windows process listing', () => {
+      const sample = `4\tSystem\t0.5\t0.1\tSystem
+1024\tsvchost.exe\t2.3\t1.5\tC:\\Windows\\system32\\svchost.exe -k netsvcs
+4500\tnode.exe\t12.8\t5.2\tnode.exe server.js`;
+
+      const procs = parseWindowsProcesses(sample);
+      expect(procs).toHaveLength(3);
+      expect(procs[0].pid).toBe(4);
+      expect(procs[0].user).toBe('SYSTEM');
+      expect(procs[1].pid).toBe(1024);
+      expect(procs[1].cpuPercent).toBe(2.3);
+      expect(procs[2].command).toBe('node.exe');
+    });
+  });
+
+  describe('parseWindowsServices', () => {
+    it('should parse Windows services output', () => {
+      const sample = `sshd|Running|Automatic|OpenSSH SSH Server
+wuauserv|Stopped|Manual|Windows Update
+TermService|Running|Automatic|Remote Desktop Services`;
+
+      const svcs = parseWindowsServices(sample);
+      expect(svcs).toHaveLength(3);
+      expect(svcs[0].name).toBe('sshd');
+      expect(svcs[0].active).toBe('active');
+      expect(svcs[0].sub).toBe('running');
+      expect(svcs[1].active).toBe('inactive');
+      expect(svcs[1].sub).toBe('stopped');
+    });
+  });
+
+  describe('parseWindowsLogs', () => {
+    it('should parse Windows event log lines', () => {
+      const sample = `2026-10-25T11:20:00 [sshd] Accepted password for Administrator
+2026-10-25T11:22:15 [Disk] The file system structure on volume C: has been verified.`;
+
+      const logs = parseWindowsLogs(sample);
+      expect(logs).toHaveLength(2);
+      expect(logs[0].timestamp).toBe('2026-10-25T11:20:00');
+      expect(logs[0].process).toBe('sshd');
+      expect(logs[0].message).toBe('Accepted password for Administrator');
+      expect(logs[1].process).toBe('Disk');
     });
   });
 });
