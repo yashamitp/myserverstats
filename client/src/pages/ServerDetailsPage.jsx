@@ -310,7 +310,7 @@ export default function ServerDetailsPage() {
               <span>•</span>
               <span className="capitalize">{server.os?.distroName || server.os?.distro || 'Ubuntu'}</span>
               <span>•</span>
-              <span>Kernel: {server.os?.kernel || 'Linux'}</span>
+              <span>Kernel: {server.os?.kernel || (server.os?.distro === 'windows' ? 'NT' : 'Linux')}</span>
               <span>•</span>
               <span>Arch: {server.os?.arch || 'x86_64'}</span>
             </div>

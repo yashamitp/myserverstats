@@ -66,7 +66,7 @@ export default function DeleteServerModal({ server, isOpen, onClose, onDeleted }
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Distro:</span>
-              <span className="text-slate-200 capitalize">{server.os?.distro || 'Linux'}</span>
+              <span className="text-slate-200 capitalize">{server.os?.distroName || server.os?.distro || 'Linux'}</span>
             </div>
           </div>
 

@@ -47,7 +47,7 @@ export default function ServerCard({ server, onRefresh, onEdit, onDelete, isRefr
             <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-mono">
               <span>{server.hostname}:{server.port || 22}</span>
               <span>•</span>
-              <span className="capitalize">{server.os?.distro || 'Ubuntu'}</span>
+              <span className="capitalize">{server.os?.distroName || server.os?.distro || 'Linux'}</span>
             </div>
           </div>
 

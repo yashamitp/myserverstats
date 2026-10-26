@@ -13,10 +13,15 @@ async function bootstrap() {
     await connectDB();
 
     // 2. Create HTTP & WebSocket Server
+    const corsOriginSetting = env.CORS_ORIGIN || '*';
+    const socketCorsOrigins = corsOriginSetting === '*' || !corsOriginSetting
+      ? true
+      : (corsOriginSetting.includes(',') ? corsOriginSetting.split(',').map(s => s.trim()) : corsOriginSetting);
+
     const httpServer = http.createServer(app);
     const io = new SocketIOServer(httpServer, {
       cors: {
-        origin: env.CORS_ORIGIN,
+        origin: socketCorsOrigins,
         methods: ['GET', 'POST', 'PATCH', 'DELETE'],
         credentials: true
       }

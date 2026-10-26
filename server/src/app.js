@@ -17,14 +17,25 @@ const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
+// Trust reverse proxy (e.g. Nginx) headers for accurate client IP and rate limiting
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: false // Allows Swagger UI and local development
 }));
 
-// CORS
+// CORS configuration supporting comma-separated origins or wildcard
+const getCorsOrigins = (originSetting) => {
+  if (!originSetting || originSetting === '*') return true;
+  if (originSetting.includes(',')) {
+    return originSetting.split(',').map(s => s.trim());
+  }
+  return originSetting;
+};
+
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: getCorsOrigins(env.CORS_ORIGIN),
   credentials: true
 }));
 
