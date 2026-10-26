@@ -218,7 +218,20 @@ class IncidentService {
   async dispatchIncidentEmail(incident, server, reason = 'new') {
     try {
       const prefs = await NotificationPreference.findOne({ tenantId: server.tenantId });
-      if (!prefs || !prefs.emailEnabled || !prefs.recipients || prefs.recipients.length === 0) {
+      let recipients = prefs?.recipients ? [...prefs.recipients] : [];
+
+      // Fallback: If preferences have no recipient, look up the tenant's primary user email
+      if (recipients.length === 0 && server.tenantId) {
+        try {
+          const User = require('../models/User');
+          const user = await User.findById(server.tenantId);
+          if (user?.email) {
+            recipients = [user.email.toLowerCase().trim()];
+          }
+        } catch (_) {}
+      }
+
+      if (!prefs || !prefs.emailEnabled || recipients.length === 0) {
         return;
       }
 
@@ -235,7 +248,7 @@ class IncidentService {
 
       if (reason === 'new') {
         const html = emailService.renderIncidentHtml(incident, server);
-        for (const recipient of prefs.recipients) {
+        for (const recipient of recipients) {
           await notificationQueue.enqueueEmail({
             tenantId: server.tenantId,
             recipient,
@@ -253,7 +266,7 @@ class IncidentService {
         const lastSent = incident.lastNotificationSentAt ? new Date(incident.lastNotificationSentAt).getTime() : 0;
         if (now - lastSent >= cooldownMs) {
           const html = emailService.renderIncidentHtml(incident, server);
-          for (const recipient of prefs.recipients) {
+          for (const recipient of recipients) {
             await notificationQueue.enqueueEmail({
               tenantId: server.tenantId,
               recipient,
@@ -269,7 +282,7 @@ class IncidentService {
         }
       } else if (reason === 'recovery' && prefs.sendRecoveryEmail) {
         const html = emailService.renderRecoveryHtml(incident, server);
-        for (const recipient of prefs.recipients) {
+        for (const recipient of recipients) {
           await notificationQueue.enqueueEmail({
             tenantId: server.tenantId,
             recipient,

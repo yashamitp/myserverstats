@@ -10,16 +10,23 @@ const logger = require('../config/logger');
 exports.getPreferences = async (req, res, next) => {
   try {
     let prefs = await NotificationPreference.findOne({ tenantId: req.user.tenantId });
+    const userEmail = req.user?.email ? req.user.email.toLowerCase().trim() : null;
 
     if (!prefs) {
       prefs = await NotificationPreference.create({
         tenantId: req.user.tenantId,
         emailEnabled: true,
-        recipients: [req.user.email].filter(Boolean),
+        recipients: userEmail ? [userEmail] : [],
         minSeverity: 'warning',
         cooldownMinutes: 30,
         sendRecoveryEmail: true
       });
+    } else if (userEmail) {
+      // Alert Notification Recipient is strictly locked to the user's login email
+      if (!Array.isArray(prefs.recipients) || prefs.recipients.length !== 1 || prefs.recipients[0] !== userEmail) {
+        prefs.recipients = [userEmail];
+        await prefs.save();
+      }
     }
 
     const isGlobalSmtpConfigured = emailService.isConfigured();
@@ -38,7 +45,6 @@ exports.updatePreferences = async (req, res, next) => {
   try {
     const {
       emailEnabled,
-      recipients,
       minSeverity,
       cooldownMinutes,
       sendRecoveryEmail,
@@ -53,9 +59,15 @@ exports.updatePreferences = async (req, res, next) => {
     }
 
     if (emailEnabled !== undefined) prefs.emailEnabled = Boolean(emailEnabled);
-    if (Array.isArray(recipients)) {
-      prefs.recipients = recipients.map(r => r.trim().toLowerCase()).filter(Boolean);
+
+    // Alert Notification Recipient is permanently locked to the authenticated user's primary login email
+    const userEmail = req.user?.email ? req.user.email.toLowerCase().trim() : null;
+    if (userEmail) {
+      prefs.recipients = [userEmail];
+    } else if (Array.isArray(req.body.recipients) && req.body.recipients.length > 0) {
+      prefs.recipients = [req.body.recipients[0].trim().toLowerCase()];
     }
+
     if (minSeverity && ['info', 'warning', 'critical'].includes(minSeverity)) {
       prefs.minSeverity = minSeverity;
     }
@@ -93,11 +105,11 @@ exports.updatePreferences = async (req, res, next) => {
 // POST /api/v1/notification-preferences/test-email - Send a test email
 exports.sendTestEmail = async (req, res, next) => {
   try {
-    const { targetEmail } = req.body;
-    const recipient = targetEmail || req.user.email;
+    // Deliver test email strictly to the user's login email
+    const recipient = req.user?.email || req.body?.targetEmail;
 
     if (!recipient) {
-      return error(res, 'Target email address is required', 400);
+      return error(res, 'Authenticated user email address is required', 400);
     }
 
     const prefs = await NotificationPreference.findOne({ tenantId: req.user.tenantId })

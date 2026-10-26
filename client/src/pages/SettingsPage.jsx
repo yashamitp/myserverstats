@@ -15,7 +15,8 @@ import {
   Plus,
   Trash2,
   Clock,
-  Layers
+  Layers,
+  Lock
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../utils/formatters';
 
@@ -33,7 +34,6 @@ export default function SettingsPage() {
     customSmtp: { enabled: false, host: '', port: 587, user: '', pass: '', fromEmail: '', fromName: 'AgentOps Alerts' }
   });
   const [isSmtpConfigured, setIsSmtpConfigured] = useState(false);
-  const [recipientInput, setRecipientInput] = useState('');
   const [testEmailStatus, setTestEmailStatus] = useState(null); // { loading, success, error }
   const [deliveryHistory, setDeliveryHistory] = useState([]);
   const [isSavingPrefs, setIsSavingPrefs] = useState(false);
@@ -123,30 +123,15 @@ export default function SettingsPage() {
   };
 
   // --- Handlers: Notifications ---
-  const handleAddRecipient = (e) => {
-    e.preventDefault();
-    if (!recipientInput.trim()) return;
-    const email = recipientInput.trim().toLowerCase();
-    if (!emailPrefs.recipients.includes(email)) {
-      setEmailPrefs(prev => ({
-        ...prev,
-        recipients: [...prev.recipients, email]
-      }));
-    }
-    setRecipientInput('');
-  };
-
-  const handleRemoveRecipient = (email) => {
-    setEmailPrefs(prev => ({
-      ...prev,
-      recipients: prev.recipients.filter(r => r !== email)
-    }));
-  };
-
   const handleSavePreferences = async () => {
     setIsSavingPrefs(true);
     try {
-      await api.updateNotificationPreferences(emailPrefs);
+      const payload = {
+        ...emailPrefs,
+        // Recipients is strictly locked to the authenticated user's login email
+        recipients: [user?.email || emailPrefs.recipients[0]].filter(Boolean)
+      };
+      await api.updateNotificationPreferences(payload);
       alert('Notification preferences updated successfully');
       loadNotificationPreferences();
     } catch (err) {
@@ -159,7 +144,7 @@ export default function SettingsPage() {
   const handleSendTestEmail = async () => {
     setTestEmailStatus({ loading: true });
     try {
-      const target = emailPrefs.recipients[0] || user?.email;
+      const target = user?.email || emailPrefs.recipients[0];
       await api.sendTestEmail({ targetEmail: target });
       setTestEmailStatus({ success: `Verification email queued for ${target}` });
       loadDeliveryHistory();
@@ -314,41 +299,37 @@ export default function SettingsPage() {
               </label>
             </div>
 
-            {/* Recipients Chips */}
+            {/* Alert Notification Recipient - Locked to Main Login Account */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Alert Notification Recipients
-              </label>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {emailPrefs.recipients.map(r => (
-                  <span key={r} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-dark-900 border border-slate-700 text-xs text-slate-200 font-mono">
-                    <span>{r}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveRecipient(r)}
-                      className="text-slate-400 hover:text-rose-400"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-slate-300">
+                  Alert Notification Recipient
+                </label>
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  <Lock className="w-3 h-3" />
+                  Primary Login Email • Locked
+                </span>
               </div>
 
-              <form onSubmit={handleAddRecipient} className="flex gap-2 max-w-md">
-                <input
-                  type="email"
-                  value={recipientInput}
-                  onChange={(e) => setRecipientInput(e.target.value)}
-                  placeholder="admin@example.com"
-                  className="flex-1 px-3 py-1.5 bg-dark-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 bg-dark-750 hover:bg-dark-700 text-white rounded-lg text-xs font-semibold"
-                >
-                  Add
-                </button>
-              </form>
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-dark-900 border border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 shrink-0">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-white font-mono">
+                      {user?.email || (emailPrefs.recipients && emailPrefs.recipients[0]) || 'Loading account email...'}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      Infrastructure alerts and recovery digests are strictly delivered to your primary account login email. This recipient cannot be changed.
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-dark-850 px-2.5 py-1 rounded-lg border border-slate-800 shrink-0">
+                  <Shield className="w-3.5 h-3.5 text-brand-400" />
+                  <span>Immutable</span>
+                </div>
+              </div>
             </div>
 
             {/* Threshold & Cooldown Controls */}
