@@ -15,5 +15,19 @@ export default defineConfig({
         ws: true
       }
     }
+  },
+  preview: {
+    port: 3000,
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        ws: true
+      }
+    }
   }
 });
