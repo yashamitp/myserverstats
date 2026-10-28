@@ -122,6 +122,7 @@ exports.updateServer = async (req, res, next) => {
       hostname,
       port,
       osDistro,
+      monitoringMethod,
       tags,
       monitoringInterval,
       isMonitoringEnabled,
@@ -152,8 +153,8 @@ exports.updateServer = async (req, res, next) => {
         server.os.distroName = 'Windows Server';
       }
     }
-    if (updates.monitoringMethod !== undefined) {
-      server.monitoringMethod = updates.monitoringMethod;
+    if (monitoringMethod !== undefined) {
+      server.monitoringMethod = monitoringMethod;
     } else if (server.os?.distro === 'windows') {
       server.monitoringMethod = parseInt(server.port, 10) === 22 ? 'ssh' : 'rdp';
     }

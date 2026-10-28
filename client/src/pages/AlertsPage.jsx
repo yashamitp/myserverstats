@@ -105,13 +105,13 @@ export default function AlertsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-dark-850 border border-slate-800 p-1 rounded-xl text-xs">
             <button
               type="button"
               onClick={() => setActiveView('incidents')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 activeView === 'incidents' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -120,7 +120,7 @@ export default function AlertsPage() {
             <button
               type="button"
               onClick={() => setActiveView('rules')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 activeView === 'rules' ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -133,7 +133,7 @@ export default function AlertsPage() {
             <button
               type="button"
               onClick={() => setStatusFilter('')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 statusFilter === '' ? 'bg-dark-750 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -142,7 +142,7 @@ export default function AlertsPage() {
             <button
               type="button"
               onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 statusFilter === 'active' ? 'bg-dark-750 text-rose-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -151,7 +151,7 @@ export default function AlertsPage() {
             <button
               type="button"
               onClick={() => setStatusFilter('resolved')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
                 statusFilter === 'resolved' ? 'bg-dark-750 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -162,7 +162,7 @@ export default function AlertsPage() {
           <button
             type="button"
             onClick={() => setShowRuleModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-600/20 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-600/20 transition-all shrink-0 ml-auto sm:ml-0"
           >
             <Plus className="w-4 h-4" />
             <span>Create Rule</span>

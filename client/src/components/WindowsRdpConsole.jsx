@@ -263,7 +263,7 @@ export default function WindowsRdpConsole({ server }) {
 
       {/* Main RDP Graphical Desktop Display */}
       <div
-        className="relative w-full h-[540px] bg-gradient-to-br from-[#0c2340] via-[#0a192f] to-[#040d1a] overflow-hidden select-none"
+        className="relative w-full h-[460px] sm:h-[540px] bg-gradient-to-br from-[#0c2340] via-[#0a192f] to-[#040d1a] overflow-hidden select-none"
         onClick={() => setStartMenuOpen(false)}
       >
         {/* Windows Desktop Background Grid Texture */}
@@ -345,13 +345,13 @@ export default function WindowsRdpConsole({ server }) {
         {activeWindow === 'powershell' && !windowMinimized.powershell && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-8 left-28 right-8 bottom-16 bg-[#012456] border border-[#0d47a1] rounded-lg shadow-2xl flex flex-col overflow-hidden z-20"
+            className="absolute top-2 sm:top-8 left-2 sm:left-28 right-2 sm:right-8 bottom-14 sm:bottom-16 bg-[#012456] border border-[#0d47a1] rounded-lg shadow-2xl flex flex-col overflow-hidden z-20"
           >
             {/* PowerShell Titlebar */}
             <div className="bg-[#0c3975] px-3 py-1.5 flex items-center justify-between text-xs text-white border-b border-[#0d47a1]">
               <div className="flex items-center gap-2">
                 <TerminalIcon className="w-3.5 h-3.5 text-blue-300" />
-                <span className="font-semibold text-[11px]">Administrator: Windows PowerShell</span>
+                <span className="font-semibold text-[11px] truncate max-w-[200px] sm:max-w-none">Administrator: Windows PowerShell</span>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -398,14 +398,15 @@ export default function WindowsRdpConsole({ server }) {
               className="bg-[#011c44] border-t border-[#0c3975] px-3 py-2 flex items-center gap-2 font-mono text-xs"
             >
               <span className="text-white font-semibold whitespace-nowrap">
-                PS C:\Users\{server.username || 'Administrator'}&gt;
+                <span className="hidden sm:inline">PS C:\Users\{server.username || 'Administrator'}&gt;</span>
+                <span className="sm:hidden text-cyan-400">PS&gt;</span>
               </span>
               <input
                 type="text"
                 value={psInput}
                 onChange={(e) => setPsInput(e.target.value)}
                 autoFocus
-                placeholder="Type command (e.g. ipconfig, Get-Process, systeminfo, help)..."
+                placeholder="Type command (ipconfig, Get-Process)..."
                 className="flex-1 bg-transparent border-none text-white focus:outline-none placeholder-slate-500 text-xs font-mono"
               />
             </form>
@@ -418,7 +419,7 @@ export default function WindowsRdpConsole({ server }) {
         {activeWindow === 'serverManager' && !windowMinimized.serverManager && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-10 left-32 right-12 bottom-20 bg-dark-850 border border-slate-700 rounded-lg shadow-2xl flex flex-col overflow-hidden z-20 text-slate-200"
+            className="absolute top-2 sm:top-10 left-2 sm:left-32 right-2 sm:right-12 bottom-14 sm:bottom-20 bg-dark-850 border border-slate-700 rounded-lg shadow-2xl flex flex-col overflow-hidden z-20 text-slate-200"
           >
             {/* Titlebar */}
             <div className="bg-dark-900 px-3 py-1.5 flex items-center justify-between text-xs border-b border-slate-800">
@@ -499,7 +500,7 @@ export default function WindowsRdpConsole({ server }) {
         {activeWindow === 'taskManager' && !windowMinimized.taskManager && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="absolute top-12 left-36 right-16 bottom-20 bg-dark-850 border border-slate-700 rounded-lg shadow-2xl flex flex-col overflow-hidden z-20 text-slate-200"
+            className="absolute top-2 sm:top-12 left-2 sm:left-36 right-2 sm:right-16 bottom-14 sm:bottom-20 bg-dark-850 border border-slate-700 rounded-lg shadow-2xl flex flex-col overflow-hidden z-20 text-slate-200"
           >
             {/* Titlebar */}
             <div className="bg-dark-900 px-3 py-1.5 flex items-center justify-between text-xs border-b border-slate-800">
@@ -692,14 +693,14 @@ export default function WindowsRdpConsole({ server }) {
                 setActiveWindow('powershell');
                 setWindowMinimized((prev) => ({ ...prev, powershell: !prev.powershell }));
               }}
-              className={`h-9 px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
+              className={`h-9 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
                 activeWindow === 'powershell' && !windowMinimized.powershell
                   ? 'bg-blue-600/30 border border-blue-500/40 text-white font-medium'
                   : 'text-slate-400 hover:bg-white/10'
               }`}
             >
               <TerminalIcon className="w-3.5 h-3.5 text-blue-400" />
-              <span>PowerShell</span>
+              <span className="hidden sm:inline">PowerShell</span>
             </button>
 
             <button
@@ -708,14 +709,14 @@ export default function WindowsRdpConsole({ server }) {
                 setActiveWindow('serverManager');
                 setWindowMinimized((prev) => ({ ...prev, serverManager: !prev.serverManager }));
               }}
-              className={`h-9 px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
+              className={`h-9 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
                 activeWindow === 'serverManager' && !windowMinimized.serverManager
                   ? 'bg-emerald-600/30 border border-emerald-500/40 text-white font-medium'
                   : 'text-slate-400 hover:bg-white/10'
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Server Manager</span>
+              <span className="hidden sm:inline">Server Manager</span>
             </button>
 
             <button
@@ -724,14 +725,14 @@ export default function WindowsRdpConsole({ server }) {
                 setActiveWindow('taskManager');
                 setWindowMinimized((prev) => ({ ...prev, taskManager: !prev.taskManager }));
               }}
-              className={`h-9 px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
+              className={`h-9 px-2 sm:px-3 rounded-lg flex items-center gap-1.5 transition-colors text-[11px] ${
                 activeWindow === 'taskManager' && !windowMinimized.taskManager
                   ? 'bg-purple-600/30 border border-purple-500/40 text-white font-medium'
                   : 'text-slate-400 hover:bg-white/10'
               }`}
             >
               <Cpu className="w-3.5 h-3.5 text-purple-400" />
-              <span>Task Manager</span>
+              <span className="hidden sm:inline">Task Manager</span>
             </button>
           </div>
 

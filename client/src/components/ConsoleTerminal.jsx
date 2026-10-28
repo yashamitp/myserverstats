@@ -417,7 +417,7 @@ export default function ConsoleTerminal({ server }) {
       {/* Terminal Viewport */}
       <div
         ref={terminalRef}
-        className="w-full h-[520px] p-2 bg-[#090d16] overflow-hidden cursor-text"
+        className="w-full h-[380px] sm:h-[520px] p-2 bg-[#090d16] overflow-hidden cursor-text"
       />
 
       {/* Terminal Security Notice Footer */}

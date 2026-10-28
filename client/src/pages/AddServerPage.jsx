@@ -458,18 +458,18 @@ export default function AddServerPage() {
         </div>
 
         {/* Submit Button */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors text-center"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || !formData.hostname || (!formData.privateKey && !formData.password)}
-            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-brand-600/20 transition-all flex items-center gap-2"
+            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-brand-600/20 transition-all flex items-center justify-center gap-2"
           >
             <span>{isSubmitting ? 'Registering Server...' : 'Add Server & Start Monitoring'}</span>
             {!isSubmitting && <ArrowRight className="w-4 h-4" />}

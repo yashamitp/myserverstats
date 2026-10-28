@@ -132,7 +132,7 @@ export default function AIAssistantPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe what you want to investigate on this server..."
-              className="w-full p-3.5 bg-dark-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 leading-relaxed"
+              className="w-full p-3.5 pb-14 sm:pb-3.5 sm:pr-36 bg-dark-900 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 leading-relaxed"
             />
             <button
               type="button"

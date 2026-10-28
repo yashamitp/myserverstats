@@ -196,11 +196,11 @@ export default function DashboardPage() {
       {/* Main Server Explorer Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Status Filter Tabs */}
-        <div className="flex items-center gap-1 bg-dark-850 border border-slate-800 p-1 rounded-xl text-xs w-fit">
+        <div className="flex items-center gap-1 bg-dark-850 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-fit overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap shrink-0 transition-colors ${
               statusFilter === 'all' ? 'bg-dark-750 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -209,7 +209,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('online')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap shrink-0 transition-colors ${
               statusFilter === 'online' ? 'bg-dark-750 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -218,7 +218,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setStatusFilter('offline')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+            className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap shrink-0 transition-colors ${
               statusFilter === 'offline' ? 'bg-dark-750 text-rose-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -228,7 +228,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setStatusFilter('warning')}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap shrink-0 transition-colors ${
                 statusFilter === 'warning' ? 'bg-dark-750 text-amber-400 shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -238,7 +238,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Search & Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -252,10 +252,11 @@ export default function DashboardPage() {
 
           <Link
             to="/servers/new"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-600/20 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-600/20 transition-all shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Add Server</span>
+            <span className="sm:hidden">Add</span>
           </Link>
         </div>
       </div>

@@ -300,7 +300,7 @@ export default function ServerDetailsPage() {
   return (
     <div className="space-y-6">
       {/* Top Banner / Compact Header */}
-      <div className="bg-dark-850 border border-slate-800/80 rounded-2xl p-6 shadow-sm">
+      <div className="bg-dark-850 border border-slate-800/80 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -319,7 +319,7 @@ export default function ServerDetailsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="text-right text-xs font-mono text-slate-400 hidden sm:block">
               <div>Uptime: <span className="text-slate-200">{uptimeSeconds ? formatDuration(uptimeSeconds) : 'Unknown'}</span></div>
               <div className="text-[11px] text-slate-500">Updated {formatTimeAgo(lastContactTime)}</div>
@@ -329,17 +329,17 @@ export default function ServerDetailsPage() {
               type="button"
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="p-2.5 rounded-xl bg-dark-750 hover:bg-dark-700 disabled:opacity-50 text-slate-200 border border-slate-700/60 shadow-sm transition-colors flex items-center gap-2 text-xs font-semibold"
+              className="p-2 sm:p-2.5 rounded-xl bg-dark-750 hover:bg-dark-700 disabled:opacity-50 text-slate-200 border border-slate-700/60 shadow-sm transition-colors flex items-center gap-1.5 sm:gap-2 text-xs font-semibold"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-brand-400' : ''}`} />
-              <span>{isRefreshing ? 'Polling...' : 'Refresh'}</span>
+              <span className="hidden xs:inline">{isRefreshing ? 'Polling...' : 'Refresh'}</span>
             </button>
 
             <button
               type="button"
               onClick={() => setIsEditModalOpen(true)}
               title="Edit VM Host & Credentials"
-              className="p-2.5 rounded-xl bg-dark-750 hover:bg-dark-700 text-slate-200 hover:text-brand-300 border border-slate-700/60 shadow-sm transition-colors flex items-center gap-2 text-xs font-semibold"
+              className="p-2 sm:p-2.5 rounded-xl bg-dark-750 hover:bg-dark-700 text-slate-200 hover:text-brand-300 border border-slate-700/60 shadow-sm transition-colors flex items-center gap-1.5 sm:gap-2 text-xs font-semibold"
             >
               <Edit2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Edit VM</span>
@@ -349,7 +349,7 @@ export default function ServerDetailsPage() {
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
               title="Delete Server"
-              className="p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-sm transition-colors flex items-center gap-2 text-xs font-semibold"
+              className="p-2 sm:p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-sm transition-colors flex items-center gap-1.5 sm:gap-2 text-xs font-semibold"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Delete</span>
@@ -358,7 +358,7 @@ export default function ServerDetailsPage() {
         </div>
 
         {/* Tab Navigation Bar */}
-        <div className="mt-6 flex items-center gap-1 overflow-x-auto border-t border-slate-800/80 pt-3">
+        <div className="mt-6 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-t border-slate-800/80 pt-3 -mx-2 px-2 sm:mx-0 sm:px-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

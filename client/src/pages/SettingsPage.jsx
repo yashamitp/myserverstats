@@ -226,7 +226,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Settings Navigation Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-800 pb-2 -mx-2 px-2 sm:mx-0 sm:px-0">
         {[
           { id: 'notifications', label: 'Email & Alerts', icon: Mail },
           { id: 'profiles', label: 'Monitoring Profiles', icon: Sliders },

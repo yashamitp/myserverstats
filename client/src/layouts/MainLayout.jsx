@@ -10,6 +10,12 @@ export default function MainLayout() {
   const location = useLocation();
   const [serverCount, setServerCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Close mobile sidebar automatically whenever user navigates
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -48,10 +54,18 @@ export default function MainLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-dark-900 text-slate-100">
-      <Sidebar serverCount={serverCount} alertCount={alertCount} />
+      <Sidebar
+        serverCount={serverCount}
+        alertCount={alertCount}
+        isOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar title={title} />
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <Navbar
+          title={title}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+        />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
           <div className="max-w-7xl mx-auto">
             <Outlet context={{ setServerCount, setAlertCount }} />
           </div>

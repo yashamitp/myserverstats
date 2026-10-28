@@ -5,6 +5,7 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../../src/app');
 const User = require('../../src/models/User');
 const Server = require('../../src/models/Server');
+const aiService = require('../../src/ai/aiService');
 
 describe('AgentOps REST API & Multi-Tenant Integration Tests', () => {
   let mongoServer;
@@ -237,6 +238,11 @@ describe('AgentOps REST API & Multi-Tenant Integration Tests', () => {
 
       const serverId = serversRes.body.data[0]._id;
 
+      const spy = jest.spyOn(aiService, 'runInvestigation').mockResolvedValue({
+        summary: 'CPU usage is within normal operating thresholds.',
+        toolCalls: []
+      });
+
       const res = await request(app)
         .post('/api/v1/ai/chat')
         .set('Authorization', `Bearer ${user1Token}`)
@@ -246,13 +252,15 @@ describe('AgentOps REST API & Multi-Tenant Integration Tests', () => {
         });
 
       // If configured with real key, returns 200; if unconfigured, returns 503 without fabricating success
-      if (process.env.AI_API_KEY) {
+      if (aiService.isConfigured()) {
         expect([200, 503]).toContain(res.status);
       } else {
         expect(res.status).toBe(503);
         expect(res.body.success).toBe(false);
         expect(res.body.error.message).toContain('not configured');
       }
+
+      spy.mockRestore();
     });
   });
 
